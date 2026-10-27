@@ -1,99 +1,175 @@
-// api/photo.js
-// Flygplansbilder från Planespotters.net.
-// Försöker registrering först och hexkod därefter.
+// api/flights.js
+// Liveflygdata från ADSB.lol för Vercel.
 
 module.exports = async function handler(req, res) {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
-  res.setHeader("Cache-Control", "s-maxage=3600, stale-while-revalidate=7200");
+  res.setHeader("Cache-Control", "s-maxage=5, stale-while-revalidate=10");
 
   if (req.method !== "GET") {
     res.setHeader("Allow", "GET");
     return res.status(405).json({ error: "Endast GET stöds." });
   }
 
-  const reg = String(req.query.reg || "")
+  const API = "https://api.adsb.lol/v2";
+
+  const q = String(req.query.q || "")
     .trim()
     .toUpperCase()
     .replace(/[^A-Z0-9-]/g, "")
-    .slice(0, 12);
+    .slice(0, 16);
 
-  const hex = String(req.query.hex || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-f0-9]/g, "")
-    .slice(0, 6);
+  const lat = Number(req.query.lat ?? 59.5);
+  const lon = Number(req.query.lon ?? 17.5);
+  const dist = Number(req.query.dist ?? 250);
 
-  if (!reg && !hex) {
-    return res.status(200).json({ photos: [] });
+  if (!q && (
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lon) ||
+    !Number.isFinite(dist) ||
+    lat < -90 || lat > 90 ||
+    lon < -180 || lon > 180 ||
+    dist < 1
+  )) {
+    return res.status(400).json({
+      error: "Ogiltiga koordinater eller sökradie."
+    });
   }
 
-  const endpoints = [];
-
-  if (reg) {
-    endpoints.push(
-      `https://api.planespotters.net/pub/photos/reg/${encodeURIComponent(reg)}`
-    );
+  if (req.query.q && !q) {
+    return res.status(400).json({
+      error: "Ange ett giltigt flygnummer eller en registrering."
+    });
   }
 
-  if (hex) {
-    endpoints.push(
-      `https://api.planespotters.net/pub/photos/hex/${encodeURIComponent(hex)}`
-    );
+  const radius = Math.min(250, Math.max(1, dist));
+
+  let urls;
+
+  if (q) {
+    const looksLikeRegistration =
+      q.includes("-") || /^[A-Z]{1,3}[0-9]{1,5}$/.test(q);
+
+    const registration =
+      `${API}/reg/${encodeURIComponent(q)}`;
+
+    const callsign =
+      `${API}/callsign/${encodeURIComponent(q)}`;
+
+    urls = looksLikeRegistration
+      ? [registration, callsign]
+      : [callsign, registration];
+  } else {
+    urls = [
+      `${API}/lat/${lat}/lon/${lon}/dist/${radius}`
+    ];
   }
 
-  for (const endpoint of endpoints) {
-    try {
-      const response = await fetch(endpoint, {
-        headers: { Accept: "application/json" },
-        signal: AbortSignal.timeout(8000)
+  try {
+    let aircraft = [];
+    let rateLimited = false;
+    let upstreamFailed = false;
+
+    for (const url of urls) {
+      try {
+        const response = await fetch(url, {
+          headers: { Accept: "application/json" },
+          signal: AbortSignal.timeout(10000)
+        });
+
+        if (response.status === 429) {
+          rateLimited = true;
+          continue;
+        }
+
+        if (!response.ok) {
+          upstreamFailed = true;
+          continue;
+        }
+
+        const data = await response.json();
+
+        if (Array.isArray(data.ac) && data.ac.length) {
+          aircraft = data.ac;
+          break;
+        }
+      } catch (error) {
+        upstreamFailed = true;
+        console.error("ADSB.lol:", error.message);
+      }
+    }
+
+    if (!aircraft.length && rateLimited) {
+      return res.status(429).json({
+        error: "För många förfrågningar. Vänta en stund och försök igen."
+      });
+    }
+
+    if (!aircraft.length && upstreamFailed) {
+      return res.status(502).json({
+        error: "Flygdatakällan kunde inte nås just nu."
+      });
+    }
+
+    const flights = aircraft
+      .filter(p =>
+        typeof p.lat === "number" &&
+        typeof p.lon === "number" &&
+        Number.isFinite(p.lat) &&
+        Number.isFinite(p.lon) &&
+        p.mil !== true &&
+        p.military !== true
+      )
+      .map(p => {
+        const baro =
+          typeof p.alt_baro === "number" ? p.alt_baro : null;
+
+        const geom =
+          typeof p.alt_geom === "number" ? p.alt_geom : null;
+
+        return {
+          hex: String(p.hex || "").toLowerCase(),
+          flight: String(p.flight || "").trim(),
+          reg: String(p.r || p.registration || "").trim(),
+          type: String(p.t || p.desc || "").trim(),
+          icaoType: String(p.t || "").trim(),
+
+          lat: p.lat,
+          lon: p.lon,
+
+          altitudeFt: baro !== null ? baro : geom,
+
+          speedKt: typeof p.gs === "number" ? p.gs : null,
+
+          heading:
+            typeof p.track === "number"
+              ? p.track
+              : typeof p.true_heading === "number"
+                ? p.true_heading
+                : null,
+
+          seenSeconds:
+            typeof p.seen_pos === "number"
+              ? p.seen_pos
+              : typeof p.seen === "number"
+                ? p.seen
+                : null,
+
+          onGround: p.alt_baro === "ground"
+        };
       });
 
-      if (!response.ok) {
-        console.warn("Photo API returned:", response.status);
-        continue;
-      }
+    return res.status(200).json({
+      source: "ADSB.lol",
+      updatedAt: new Date().toISOString(),
+      count: flights.length,
+      flights
+    });
 
-      const data = await response.json();
+  } catch (error) {
+    console.error("Flights API error:", error);
 
-      const records = Array.isArray(data.photos)
-        ? data.photos
-        : [];
-
-      const photos = records
-        .map(photo => {
-          const src =
-            photo.thumbnail_large?.src ||
-            photo.thumbnail?.src ||
-            photo.image?.src ||
-            "";
-
-          const link = photo.link || "";
-
-          return {
-            src,
-            link,
-            photographer: photo.photographer || "",
-            date: photo.date || ""
-          };
-        })
-        .filter(photo => {
-          // Acceptera bara fullständiga HTTPS-bildadresser.
-          try {
-            return new URL(photo.src).protocol === "https:";
-          } catch {
-            return false;
-          }
-        })
-        .slice(0, 5);
-
-      if (photos.length) {
-        return res.status(200).json({ photos });
-      }
-
-    } catch (error) {
-      console.error("Photo lookup failed:", error);
-    }
+    return res.status(502).json({
+      error: "Ett oväntat fel inträffade när flygdata hämtades."
+    });
   }
-
-  return res.status(200).json({ photos: [] });
 };
