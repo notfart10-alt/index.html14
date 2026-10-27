@@ -5,9 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Flygspårning</title>
 
-<link
-  href="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.css"
-  rel="stylesheet">
+<link href="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.css" rel="stylesheet">
 
 <style>
 :root {
@@ -20,9 +18,7 @@
   --muted: #9aacc4;
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
   margin: 0;
@@ -45,9 +41,7 @@ header {
   font-weight: 800;
 }
 
-.brand span {
-  color: var(--green);
-}
+.brand span { color: var(--green); }
 
 #topStatus {
   font-size: 12px;
@@ -60,19 +54,9 @@ main {
   padding: 20px;
 }
 
-h1 {
-  margin: 0 0 8px;
-  font-size: 25px;
-}
-
-h2 {
-  font-size: 17px;
-  margin: 0 0 15px;
-}
-
-p {
-  line-height: 1.5;
-}
+h1 { margin: 0 0 8px; font-size: 25px; }
+h2 { font-size: 17px; margin: 0 0 15px; }
+p { line-height: 1.5; }
 
 .muted {
   color: var(--muted);
@@ -96,9 +80,7 @@ input {
   outline: none;
 }
 
-input:focus {
-  border-color: var(--green);
-}
+input:focus { border-color: var(--green); }
 
 button {
   cursor: pointer;
@@ -140,7 +122,7 @@ button {
   background: #1b302a;
 }
 
-/* Karta + informationspanel */
+/* Kartlayout */
 
 .workspace {
   display: grid;
@@ -176,9 +158,7 @@ button {
   border-radius: 12px;
 }
 
-#detailsTitle {
-  overflow-wrap: anywhere;
-}
+#detailsTitle { overflow-wrap: anywhere; }
 
 .info-line {
   margin: 10px 0;
@@ -186,9 +166,7 @@ button {
   overflow-wrap: anywhere;
 }
 
-#photoArea {
-  margin-top: 22px;
-}
+#photoArea { margin-top: 22px; }
 
 .photo {
   display: block;
@@ -216,9 +194,7 @@ button {
   padding: 9px;
 }
 
-.photo-links a:hover {
-  background: #20372e;
-}
+.photo-links a:hover { background: #20372e; }
 
 #statusMessage {
   min-height: 20px;
@@ -252,7 +228,7 @@ footer {
   transform-origin: center;
 }
 
-/* Upphöjda flygplatsmarkörer */
+/* Flygplatsmarkörer */
 
 .airport-marker {
   position: relative;
@@ -313,9 +289,7 @@ footer {
   z-index: 10;
 }
 
-.airport-marker:hover .airport-label {
-  display: block;
-}
+.airport-marker:hover .airport-label { display: block; }
 
 .small-note {
   font-size: 11px;
@@ -324,13 +298,9 @@ footer {
 }
 
 @media (max-width: 950px) {
-  main {
-    padding: 12px;
-  }
+  main { padding: 12px; }
 
-  .workspace {
-    grid-template-columns: minmax(0, 1fr);
-  }
+  .workspace { grid-template-columns: minmax(0, 1fr); }
 
   .map-container {
     height: 65vh;
@@ -345,21 +315,12 @@ footer {
 }
 
 @media (max-width: 600px) {
-  header {
-    padding: 13px;
-  }
+  header { padding: 13px; }
+  main { padding: 10px; }
 
-  main {
-    padding: 10px;
-  }
+  .toolbar { flex-wrap: wrap; }
 
-  .toolbar {
-    flex-wrap: wrap;
-  }
-
-  .toolbar input {
-    flex-basis: 100%;
-  }
+  .toolbar input { flex-basis: 100%; }
 
   .map-container {
     height: 60vh;
@@ -396,18 +357,15 @@ footer {
 
   <div class="map-tools">
     <button class="viewbtn active" id="flatButton">2D-karta</button>
-    <button class="viewbtn" id="globeButton">3D-glob</button>
+    <button class="viewbtn" id="globeButton">3D-vy</button>
     <button class="viewbtn active" id="buildingsButton">
       3D-byggnader: PÅ
     </button>
 
-    <span class="muted" id="airportStatus">
-      Hämtar flygplatser...
-    </span>
+    <span class="muted" id="airportStatus">Hämtar flygplatser...</span>
   </div>
 
   <div class="workspace">
-
     <div class="map-container">
       <div id="map"></div>
     </div>
@@ -428,12 +386,9 @@ footer {
         </p>
       </div>
     </aside>
-
   </div>
 
-  <div id="statusMessage" class="muted">
-    Startar kartan...
-  </div>
+  <div id="statusMessage" class="muted">Startar kartan...</div>
 
   <footer>
     Flygdata: ADSB.lol. Flygplatser: OurAirports.
@@ -491,8 +446,7 @@ function escapeHTML(value) {
 
 function planeId(p) {
   return String(
-    p.hex || p.reg || p.flight ||
-    `${p.lat},${p.lon}`
+    p.hex || p.reg || p.flight || `${p.lat},${p.lon}`
   ).trim().toLowerCase();
 }
 
@@ -544,25 +498,14 @@ async function fetchJSON(url, signal) {
   return data;
 }
 
-/* ---------------------------
-   RIKTIGA 3D-BYGGNADER
---------------------------- */
+/* 3D-byggnader */
 
 function add3DBuildings() {
   if (!mapReady) return;
 
-  if (map.getLayer("airport-3d-buildings")) {
-    return;
-  }
+  if (map.getLayer("airport-3d-buildings")) return;
 
   const style = map.getStyle();
-
-  /*
-   * OpenFreeMap Liberty använder normalt en vektorkälla
-   * med byggnadsdata. Vi kontrollerar källan och lagret
-   * innan vi lägger till extruderade 3D-byggnader.
-   */
-
   const sources = style.sources || {};
 
   const sourceName = Object.keys(sources).find(name => {
@@ -576,9 +519,7 @@ function add3DBuildings() {
   });
 
   if (!sourceName) {
-    console.warn(
-      "Ingen kompatibel vektorkälla hittades för 3D-byggnader."
-    );
+    console.warn("Ingen kompatibel vektorkälla hittades för 3D-byggnader.");
 
     $("buildingsButton").textContent =
       "3D-byggnader: datakälla saknas";
@@ -586,23 +527,12 @@ function add3DBuildings() {
     return;
   }
 
-  const source = sources[sourceName];
-
-  /*
-   * Källan måste innehålla byggnadslagret.
-   * Om style.json inte specificerar lagerlistan försöker
-   * vi använda standardlagret "building".
-   */
-
-  const layerId = "airport-3d-buildings";
-
   try {
     map.addLayer({
-      id: layerId,
+      id: "airport-3d-buildings",
       type: "fill-extrusion",
       source: sourceName,
       "source-layer": "building",
-
       minzoom: 14,
 
       filter: [
@@ -646,12 +576,10 @@ function add3DBuildings() {
     });
 
     $("buildingsButton").textContent =
-      buildingsEnabled
-        ? "3D-byggnader: PÅ"
-        : "3D-byggnader: AV";
+      buildingsEnabled ? "3D-byggnader: PÅ" : "3D-byggnader: AV";
 
     map.setLayoutProperty(
-      layerId,
+      "airport-3d-buildings",
       "visibility",
       buildingsEnabled ? "visible" : "none"
     );
@@ -664,9 +592,7 @@ function add3DBuildings() {
   }
 }
 
-/* ---------------------------
-   FLYGPLATSDATA
---------------------------- */
+/* Flygplatser */
 
 function parseCSVLine(line) {
   const out = [];
@@ -768,7 +694,6 @@ async function loadAirports() {
     }
 
     airports = parsed;
-
     renderAirportMarkers();
 
     $("airportStatus").textContent =
@@ -846,10 +771,7 @@ function renderAirportMarkers() {
     const id = String(airport.id);
 
     if (!airportMarkers.has(id)) {
-      airportMarkers.set(
-        id,
-        createAirportMarker(airport)
-      );
+      airportMarkers.set(id, createAirportMarker(airport));
     }
   }
 }
@@ -884,18 +806,20 @@ function selectAirport(a) {
     </div>
   `;
 
-  map.flyTo({
+  // Behåll Mercator-projektion och rak karta vid klick.
+  map.stop();
+
+  map.easeTo({
     center: [a.lon, a.lat],
-    zoom: Math.max(14, map.getZoom()),
-    pitch: 60,
+    zoom: Math.max(12, Math.min(14, map.getZoom() < 12 ? 12 : map.getZoom())),
+    pitch: 0,
     bearing: 0,
-    duration: 1000
+    duration: 700,
+    essential: true
   });
 }
 
-/* ---------------------------
-   FLYGPLANSSTÖD
---------------------------- */
+/* Flygplan */
 
 function createPlaneMarker(p) {
   const el = document.createElement("div");
@@ -937,17 +861,13 @@ function updatePlaneMarker(p) {
   const icon = el.querySelector("span");
 
   if (icon) {
-    icon.style.transform =
-      `rotate(${Number(p.heading) || 0}deg)`;
+    icon.style.transform = `rotate(${Number(p.heading) || 0}deg)`;
   }
 }
 
 function drawPlaneMarkers() {
   for (const p of flights.values()) {
-    if (
-      Number.isFinite(p.lat) &&
-      Number.isFinite(p.lon)
-    ) {
+    if (Number.isFinite(p.lat) && Number.isFinite(p.lon)) {
       updatePlaneMarker(p);
     }
   }
@@ -973,8 +893,8 @@ function getAreas() {
   const latSpan = Math.max(.1, north - south);
   const lonSpan = Math.max(.1, east - west);
 
-  let cols = map.getZoom() <= 2 ? 3 : 3;
-  let rows = map.getZoom() <= 2 ? 2 : 3;
+  let cols = 3;
+  let rows = 3;
 
   if (map.getZoom() >= 8) {
     cols = 2;
@@ -1016,10 +936,7 @@ async function fetchArea(area, signal) {
     dist: String(area.dist)
   });
 
-  const data = await fetchJSON(
-    "/api/flights?" + params,
-    signal
-  );
+  const data = await fetchJSON("/api/flights?" + params, signal);
 
   return Array.isArray(data.flights) ? data.flights : [];
 }
@@ -1054,8 +971,7 @@ async function loadFlights() {
 
     if (version !== requestVersion) return;
 
-    const successful =
-      results.filter(r => r.status === "fulfilled");
+    const successful = results.filter(r => r.status === "fulfilled");
 
     if (!successful.length) {
       throw new Error("Inga flygområden kunde hämtas.");
@@ -1097,9 +1013,7 @@ async function loadFlights() {
       `Uppdaterad ${new Date().toLocaleTimeString("sv-SE")}`;
 
     $("topStatus").textContent =
-      successful.length === areas.length
-        ? "● LIVE"
-        : "● DELVIS LIVE";
+      successful.length === areas.length ? "● LIVE" : "● DELVIS LIVE";
 
   } catch (error) {
     if (error.name !== "AbortError") {
@@ -1120,9 +1034,7 @@ async function loadFlights() {
   }
 }
 
-/* ---------------------------
-   FLYGPLANSBILDER
---------------------------- */
+/* Bildsökning */
 
 function photoLinks(query) {
   const q = encodeURIComponent(query);
@@ -1256,19 +1168,21 @@ function selectPlane(id) {
     <div class="info-line"><b>Position:</b> ${p.lat.toFixed(4)}, ${p.lon.toFixed(4)}</div>
   `;
 
-  map.flyTo({
+  map.stop();
+
+  map.easeTo({
     center: [p.lon, p.lat],
     zoom: Math.max(8, map.getZoom()),
-    pitch: 55,
-    duration: 800
+    pitch: 0,
+    bearing: 0,
+    duration: 700,
+    essential: true
   });
 
   loadPhotos(p, id);
 }
 
-/* ---------------------------
-   SÖKNING
---------------------------- */
+/* Sökning */
 
 async function searchFlight() {
   const query = $("searchInput").value.trim();
@@ -1276,7 +1190,6 @@ async function searchFlight() {
   if (!query) {
     $("statusMessage").textContent =
       "Skriv ett flygnummer eller en registrering.";
-
     return;
   }
 
@@ -1327,17 +1240,20 @@ async function searchFlight() {
     flights.set(id, p);
     drawPlaneMarkers();
 
-    map.flyTo({
+    map.stop();
+
+    map.easeTo({
       center: [p.lon, p.lat],
       zoom: Math.max(8, map.getZoom()),
-      pitch: 55,
-      duration: 800
+      pitch: 0,
+      bearing: 0,
+      duration: 700,
+      essential: true
     });
 
     selectPlane(id);
 
-    $("statusMessage").textContent =
-      "Hittade " + flightName(p) + ".";
+    $("statusMessage").textContent = "Hittade " + flightName(p) + ".";
 
   } catch (error) {
     console.error(error);
@@ -1361,18 +1277,35 @@ $("refreshButton").addEventListener("click", () => {
   if (!loading) loadFlights();
 });
 
+/* 2D och 3D-vy */
+
 $("flatButton").addEventListener("click", () => {
+  map.stop();
   map.setProjection({ type: "mercator" });
-  map.setPitch(0);
-  map.setBearing(0);
+
+  map.easeTo({
+    pitch: 0,
+    bearing: 0,
+    duration: 350,
+    essential: true
+  });
 
   $("flatButton").classList.add("active");
   $("globeButton").classList.remove("active");
 });
 
 $("globeButton").addEventListener("click", () => {
-  map.setProjection({ type: "globe" });
-  map.setPitch(45);
+  // Lutande 3D-vy i Mercator, så markörerna inte hoppar
+  // på grund av ett projektionsbyte till glob.
+  map.stop();
+  map.setProjection({ type: "mercator" });
+
+  map.easeTo({
+    pitch: 45,
+    bearing: 0,
+    duration: 450,
+    essential: true
+  });
 
   $("globeButton").classList.add("active");
   $("flatButton").classList.remove("active");
@@ -1389,19 +1322,14 @@ $("buildingsButton").addEventListener("click", () => {
     );
 
     $("buildingsButton").textContent =
-      buildingsEnabled
-        ? "3D-byggnader: PÅ"
-        : "3D-byggnader: AV";
+      buildingsEnabled ? "3D-byggnader: PÅ" : "3D-byggnader: AV";
   }
 });
 
-/* ---------------------------
-   START
---------------------------- */
+/* Start */
 
 map.on("load", async () => {
   mapReady = true;
-
   $("topStatus").textContent = "● LIVE";
 
   add3DBuildings();
