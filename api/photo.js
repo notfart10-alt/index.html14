@@ -1,6 +1,6 @@
 ```javascript
 // api/photo.js
-// Flygplansbilder och reservsökningar.
+// Flygplansbilder från Planespotters.net med reservsökningar.
 // Vercel Serverless Function.
 
 module.exports = async function handler(req, res) {
@@ -112,8 +112,6 @@ module.exports = async function handler(req, res) {
     }
   }
 
-  // Ingen bild hittades. Skicka riktiga söklänkar i stället
-  // för att returnera en trasig eller påhittad bildadress.
   return res.status(200).json({
     found: false,
     photos: [],
