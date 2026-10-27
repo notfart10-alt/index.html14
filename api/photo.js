@@ -1,175 +1,124 @@
-// api/flights.js
-// Liveflygdata från ADSB.lol för Vercel.
+```javascript
+// api/photo.js
+// Flygplansbilder och reservsökningar.
+// Vercel Serverless Function.
 
 module.exports = async function handler(req, res) {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
-  res.setHeader("Cache-Control", "s-maxage=5, stale-while-revalidate=10");
+  res.setHeader(
+    "Cache-Control",
+    "s-maxage=1800, stale-while-revalidate=3600"
+  );
 
   if (req.method !== "GET") {
     res.setHeader("Allow", "GET");
     return res.status(405).json({ error: "Endast GET stöds." });
   }
 
-  const API = "https://api.adsb.lol/v2";
+  const clean = (value, maxLength) =>
+    String(value || "")
+      .trim()
+      .replace(/[^a-zA-Z0-9 -]/g, "")
+      .slice(0, maxLength);
 
-  const q = String(req.query.q || "")
-    .trim()
-    .toUpperCase()
-    .replace(/[^A-Z0-9-]/g, "")
-    .slice(0, 16);
+  const reg = clean(req.query.reg, 15).toUpperCase();
+  const hex = clean(req.query.hex, 6).toLowerCase();
 
-  const lat = Number(req.query.lat ?? 59.5);
-  const lon = Number(req.query.lon ?? 17.5);
-  const dist = Number(req.query.dist ?? 250);
-
-  if (!q && (
-    !Number.isFinite(lat) ||
-    !Number.isFinite(lon) ||
-    !Number.isFinite(dist) ||
-    lat < -90 || lat > 90 ||
-    lon < -180 || lon > 180 ||
-    dist < 1
-  )) {
+  if (!reg && !hex) {
     return res.status(400).json({
-      error: "Ogiltiga koordinater eller sökradie."
+      error: "Registrering eller ICAO-hexkod krävs."
     });
   }
 
-  if (req.query.q && !q) {
-    return res.status(400).json({
-      error: "Ange ett giltigt flygnummer eller en registrering."
-    });
+  const searchTerm = reg || hex;
+
+  const searchLinks = {
+    google:
+      "https://www.google.com/search?tbm=isch&q=" +
+      encodeURIComponent(searchTerm + " aircraft"),
+
+    jetphotos:
+      "https://www.jetphotos.com/search?q=" +
+      encodeURIComponent(reg || searchTerm),
+
+    planespotters:
+      "https://www.planespotters.net/search?q=" +
+      encodeURIComponent(reg || searchTerm)
+  };
+
+  const endpoints = [];
+
+  if (reg) {
+    endpoints.push(
+      "https://api.planespotters.net/pub/photos/reg/" +
+      encodeURIComponent(reg)
+    );
   }
 
-  const radius = Math.min(250, Math.max(1, dist));
-
-  let urls;
-
-  if (q) {
-    const looksLikeRegistration =
-      q.includes("-") || /^[A-Z]{1,3}[0-9]{1,5}$/.test(q);
-
-    const registration =
-      `${API}/reg/${encodeURIComponent(q)}`;
-
-    const callsign =
-      `${API}/callsign/${encodeURIComponent(q)}`;
-
-    urls = looksLikeRegistration
-      ? [registration, callsign]
-      : [callsign, registration];
-  } else {
-    urls = [
-      `${API}/lat/${lat}/lon/${lon}/dist/${radius}`
-    ];
+  if (hex) {
+    endpoints.push(
+      "https://api.planespotters.net/pub/photos/hex/" +
+      encodeURIComponent(hex)
+    );
   }
 
-  try {
-    let aircraft = [];
-    let rateLimited = false;
-    let upstreamFailed = false;
+  for (const endpoint of endpoints) {
+    try {
+      const response = await fetch(endpoint, {
+        headers: { Accept: "application/json" },
+        signal: AbortSignal.timeout(8000)
+      });
 
-    for (const url of urls) {
-      try {
-        const response = await fetch(url, {
-          headers: { Accept: "application/json" },
-          signal: AbortSignal.timeout(10000)
+      if (!response.ok) continue;
+
+      const data = await response.json();
+
+      const photos = (Array.isArray(data.photos) ? data.photos : [])
+        .map(photo => {
+          const thumbnail =
+            photo.thumbnail_large?.src ||
+            photo.thumbnail?.src ||
+            photo.image?.src ||
+            null;
+
+          return {
+            src: thumbnail,
+            link: photo.link || null,
+            photographer: photo.photographer || null,
+            date: photo.date || null,
+            source: "Planespotters.net"
+          };
+        })
+        .filter(photo => {
+          if (!photo.src) return false;
+
+          try {
+            const url = new URL(photo.src);
+            return url.protocol === "https:";
+          } catch {
+            return false;
+          }
         });
 
-        if (response.status === 429) {
-          rateLimited = true;
-          continue;
-        }
-
-        if (!response.ok) {
-          upstreamFailed = true;
-          continue;
-        }
-
-        const data = await response.json();
-
-        if (Array.isArray(data.ac) && data.ac.length) {
-          aircraft = data.ac;
-          break;
-        }
-      } catch (error) {
-        upstreamFailed = true;
-        console.error("ADSB.lol:", error.message);
+      if (photos.length) {
+        return res.status(200).json({
+          found: true,
+          photos,
+          searchLinks
+        });
       }
+    } catch (error) {
+      console.error("Planespotters lookup failed:", error.message);
     }
-
-    if (!aircraft.length && rateLimited) {
-      return res.status(429).json({
-        error: "För många förfrågningar. Vänta en stund och försök igen."
-      });
-    }
-
-    if (!aircraft.length && upstreamFailed) {
-      return res.status(502).json({
-        error: "Flygdatakällan kunde inte nås just nu."
-      });
-    }
-
-    const flights = aircraft
-      .filter(p =>
-        typeof p.lat === "number" &&
-        typeof p.lon === "number" &&
-        Number.isFinite(p.lat) &&
-        Number.isFinite(p.lon) &&
-        p.mil !== true &&
-        p.military !== true
-      )
-      .map(p => {
-        const baro =
-          typeof p.alt_baro === "number" ? p.alt_baro : null;
-
-        const geom =
-          typeof p.alt_geom === "number" ? p.alt_geom : null;
-
-        return {
-          hex: String(p.hex || "").toLowerCase(),
-          flight: String(p.flight || "").trim(),
-          reg: String(p.r || p.registration || "").trim(),
-          type: String(p.t || p.desc || "").trim(),
-          icaoType: String(p.t || "").trim(),
-
-          lat: p.lat,
-          lon: p.lon,
-
-          altitudeFt: baro !== null ? baro : geom,
-
-          speedKt: typeof p.gs === "number" ? p.gs : null,
-
-          heading:
-            typeof p.track === "number"
-              ? p.track
-              : typeof p.true_heading === "number"
-                ? p.true_heading
-                : null,
-
-          seenSeconds:
-            typeof p.seen_pos === "number"
-              ? p.seen_pos
-              : typeof p.seen === "number"
-                ? p.seen
-                : null,
-
-          onGround: p.alt_baro === "ground"
-        };
-      });
-
-    return res.status(200).json({
-      source: "ADSB.lol",
-      updatedAt: new Date().toISOString(),
-      count: flights.length,
-      flights
-    });
-
-  } catch (error) {
-    console.error("Flights API error:", error);
-
-    return res.status(502).json({
-      error: "Ett oväntat fel inträffade när flygdata hämtades."
-    });
   }
+
+  // Ingen bild hittades. Skicka riktiga söklänkar i stället
+  // för att returnera en trasig eller påhittad bildadress.
+  return res.status(200).json({
+    found: false,
+    photos: [],
+    searchLinks,
+    message: "Ingen direkt bild hittades. Prova bildsökningarna."
+  });
 };
+```
