@@ -19,8 +19,8 @@ module.exports = async function handler(req, res) {
     .replace(/[^A-Z0-9-]/g, "")
     .slice(0, 16);
 
-  const lat = Number(req.query.lat ?? 59.5);
-  const lon = Number(req.query.lon ?? 17.5);
+  const lat = Number(req.query.lat ?? 58.6);
+  const lon = Number(req.query.lon ?? 15.2);
   const dist = Number(req.query.dist ?? 250);
 
   if (req.query.q && !q) {
@@ -89,7 +89,7 @@ module.exports = async function handler(req, res) {
 
         const data = await response.json();
 
-        if (Array.isArray(data.ac) && data.ac.length > 0) {
+        if (Array.isArray(data.ac)) {
           aircraft = data.ac;
           break;
         }
@@ -117,10 +117,8 @@ module.exports = async function handler(req, res) {
         typeof p.lon === "number" &&
         Number.isFinite(p.lat) &&
         Number.isFinite(p.lon) &&
-        p.lat >= -90 &&
-        p.lat <= 90 &&
-        p.lon >= -180 &&
-        p.lon <= 180 &&
+        p.lat >= -90 && p.lat <= 90 &&
+        p.lon >= -180 && p.lon <= 180 &&
         p.mil !== true &&
         p.military !== true
       )
@@ -135,4 +133,54 @@ module.exports = async function handler(req, res) {
           hex: String(p.hex || "").toLowerCase(),
           flight: String(p.flight || "").trim(),
           reg: String(p.r || p.registration || "").trim(),
-          type: String
+          type: String(p.t || p.desc || "").trim(),
+          icaoType: String(p.t || "").trim(),
+
+          lat: p.lat,
+          lon: p.lon,
+
+          altitudeFt: baro !== null ? baro : geom,
+
+          speedKt: typeof p.gs === "number" ? p.gs : null,
+
+          heading:
+            typeof p.track === "number"
+              ? p.track
+              : typeof p.true_heading === "number"
+                ? p.true_heading
+                : null,
+
+          seenSeconds:
+            typeof p.seen_pos === "number"
+              ? p.seen_pos
+              : typeof p.seen === "number"
+                ? p.seen
+                : null,
+
+          onGround: p.alt_baro === "ground",
+
+          // Transponderkod, exempelvis 7700 eller 7500.
+          squawk: String(p.squawk || "").trim(),
+
+          airline: String(p.airline || "").trim(),
+          origin: p.origin || null,
+          destination: p.destination || null
+        };
+      });
+
+    return res.status(200).json({
+      source: "ADSB.lol",
+      updatedAt: new Date().toISOString(),
+      count: flights.length,
+      flights
+    });
+
+  } catch (error) {
+    console.error("Flights API error:", error);
+
+    return res.status(502).json({
+      error: "Ett oväntat fel inträffade när flygdata hämtades."
+    });
+  }
+};
+```
