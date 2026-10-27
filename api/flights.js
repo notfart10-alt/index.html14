@@ -1,6 +1,5 @@
 // api/flights.js
-// Live-data för civila flygplan via ADSB.lol.
-// Vercel Serverless Function.
+// Liveflygdata från ADSB.lol för Vercel.
 
 module.exports = async function handler(req, res) {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
@@ -13,7 +12,7 @@ module.exports = async function handler(req, res) {
 
   const API = "https://api.adsb.lol/v2";
 
-  const query = String(req.query.q || "")
+  const q = String(req.query.q || "")
     .trim()
     .toUpperCase()
     .replace(/[^A-Z0-9-]/g, "")
@@ -21,53 +20,47 @@ module.exports = async function handler(req, res) {
 
   const lat = Number(req.query.lat ?? 59.5);
   const lon = Number(req.query.lon ?? 17.5);
-  const requestedDist = Number(req.query.dist ?? 250);
+  const dist = Number(req.query.dist ?? 250);
 
-  if (
-    !query &&
-    (
-      !Number.isFinite(lat) ||
-      !Number.isFinite(lon) ||
-      !Number.isFinite(requestedDist) ||
-      lat < -90 || lat > 90 ||
-      lon < -180 || lon > 180 ||
-      requestedDist < 1
-    )
-  ) {
+  if (!q && (
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lon) ||
+    !Number.isFinite(dist) ||
+    lat < -90 || lat > 90 ||
+    lon < -180 || lon > 180 ||
+    dist < 1
+  )) {
     return res.status(400).json({
       error: "Ogiltiga koordinater eller sökradie."
     });
   }
 
-  if (req.query.q && !query) {
+  if (req.query.q && !q) {
     return res.status(400).json({
       error: "Ange ett giltigt flygnummer eller en registrering."
     });
   }
 
-  // ADSB.lol tillåter högst 250 nautiska mil.
-  const dist = Math.min(250, Math.max(1, requestedDist));
+  const radius = Math.min(250, Math.max(1, dist));
 
   let urls;
 
-  if (query) {
+  if (q) {
     const looksLikeRegistration =
-      query.includes("-") ||
-      /^[A-Z]{1,3}[0-9]{1,5}$/.test(query);
+      q.includes("-") || /^[A-Z]{1,3}[0-9]{1,5}$/.test(q);
 
-    const registrationUrl =
-      `${API}/registration/${encodeURIComponent(query)}`;
+    const registration =
+      `${API}/reg/${encodeURIComponent(q)}`;
 
-    const callsignUrl =
-      `${API}/callsign/${encodeURIComponent(query)}`;
+    const callsign =
+      `${API}/callsign/${encodeURIComponent(q)}`;
 
-    // Prova den mest sannolika söktypen först.
     urls = looksLikeRegistration
-      ? [registrationUrl, callsignUrl]
-      : [callsignUrl, registrationUrl];
+      ? [registration, callsign]
+      : [callsign, registration];
   } else {
     urls = [
-      `${API}/lat/${lat}/lon/${lon}/dist/${dist}`
+      `${API}/lat/${lat}/lon/${lon}/dist/${radius}`
     ];
   }
 
@@ -101,86 +94,67 @@ module.exports = async function handler(req, res) {
         }
       } catch (error) {
         upstreamFailed = true;
-        console.error("ADSB.lol request failed:", error);
+        console.error("ADSB.lol:", error.message);
       }
     }
 
     if (!aircraft.length && rateLimited) {
       return res.status(429).json({
-        error: "Flygdatakällan är tillfälligt överbelastad. Försök igen om en stund."
+        error: "För många förfrågningar. Vänta en stund och försök igen."
       });
     }
 
     if (!aircraft.length && upstreamFailed) {
       return res.status(502).json({
-        error: "Flygdatakällan kunde inte nås. Försök igen senare."
+        error: "Flygdatakällan kunde inte nås just nu."
       });
     }
 
     const flights = aircraft
-      .filter(plane => {
-        const hasPosition =
-          typeof plane.lat === "number" &&
-          typeof plane.lon === "number" &&
-          Number.isFinite(plane.lat) &&
-          Number.isFinite(plane.lon);
-
-        // Filtrera bort flygplan som uttryckligen flaggats
-        // som militära av datakällan.
-        const isMilitary =
-          plane.mil === true ||
-          plane.military === true;
-
-        return hasPosition && !isMilitary;
-      })
-      .map(plane => {
+      .filter(p =>
+        typeof p.lat === "number" &&
+        typeof p.lon === "number" &&
+        Number.isFinite(p.lat) &&
+        Number.isFinite(p.lon) &&
+        p.mil !== true &&
+        p.military !== true
+      )
+      .map(p => {
         const baro =
-          typeof plane.alt_baro === "number"
-            ? plane.alt_baro
-            : null;
+          typeof p.alt_baro === "number" ? p.alt_baro : null;
 
         const geom =
-          typeof plane.alt_geom === "number"
-            ? plane.alt_geom
-            : null;
+          typeof p.alt_geom === "number" ? p.alt_geom : null;
 
         return {
-          hex: String(plane.hex || "").toLowerCase(),
-          flight: String(plane.flight || "").trim(),
-          reg: String(plane.r || plane.registration || "").trim(),
-          type: String(plane.t || plane.desc || "").trim(),
-          icaoType: String(plane.t || "").trim(),
+          hex: String(p.hex || "").toLowerCase(),
+          flight: String(p.flight || "").trim(),
+          reg: String(p.r || p.registration || "").trim(),
+          type: String(p.t || p.desc || "").trim(),
+          icaoType: String(p.t || "").trim(),
 
-          lat: plane.lat,
-          lon: plane.lon,
+          lat: p.lat,
+          lon: p.lon,
 
           altitudeFt: baro !== null ? baro : geom,
 
-          altitudeSource:
-            baro !== null
-              ? "barometric"
-              : geom !== null
-                ? "geometric"
-                : null,
-
-          speedKt:
-            typeof plane.gs === "number" ? plane.gs : null,
+          speedKt: typeof p.gs === "number" ? p.gs : null,
 
           heading:
-            typeof plane.track === "number"
-              ? plane.track
-              : typeof plane.true_heading === "number"
-                ? plane.true_heading
+            typeof p.track === "number"
+              ? p.track
+              : typeof p.true_heading === "number"
+                ? p.true_heading
                 : null,
 
           seenSeconds:
-            typeof plane.seen_pos === "number"
-              ? plane.seen_pos
-              : typeof plane.seen === "number"
-                ? plane.seen
+            typeof p.seen_pos === "number"
+              ? p.seen_pos
+              : typeof p.seen === "number"
+                ? p.seen
                 : null,
 
-          onGround: plane.alt_baro === "ground"
+          onGround: p.alt_baro === "ground"
         };
       });
 
