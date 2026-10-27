@@ -3,21 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Flygspårare</title>
+<title>Flygspårning</title>
 
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.css">
 
 <style>
-* {
-  box-sizing: border-box;
-}
-
 :root {
+  color-scheme: dark;
   --bg: #0b1018;
   --panel: #121a26;
   --line: #273447;
   --green: #6ef7b1;
+  --muted: #96a5ba;
 }
+
+* { box-sizing: border-box; }
 
 body {
   margin: 0;
@@ -27,115 +27,80 @@ body {
 }
 
 header {
-  height: 68px;
+  padding: 18px 22px;
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  padding: 0 22px;
+  align-items: center;
   border-bottom: 1px solid var(--line);
-  background: #0b1018;
 }
 
-.brand {
-  font-size: 21px;
-  font-weight: 900;
-  letter-spacing: -1px;
-}
+.brand { font-size: 21px; font-weight: 900; }
+.brand span { color: var(--green); }
 
-.brand span {
-  color: var(--green);
-}
-
-.status {
-  font-size: 11px;
-  color: var(--green);
-}
+.status { color: var(--green); font-size: 12px; }
 
 nav {
+  padding: 12px 20px;
   display: flex;
   gap: 8px;
-  padding: 14px 20px;
   border-bottom: 1px solid var(--line);
 }
 
-nav button,
-.viewbtn {
+nav button, .viewbtn {
+  padding: 10px 15px;
   background: transparent;
-  border: 1px solid transparent;
-  color: #aab7ca;
-  padding: 12px 18px;
-  border-radius: 9px;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 8px;
   cursor: pointer;
-  font-weight: bold;
 }
 
-nav button.active,
-.viewbtn.active {
+nav button.active, .viewbtn.active {
+  color: var(--green);
   background: #20332f;
   border-color: #315b4c;
-  color: var(--green);
 }
 
 main {
-  padding: 18px;
-  max-width: 1600px;
+  max-width: 1700px;
   margin: auto;
+  padding: 18px;
 }
 
-.page {
-  display: none;
-}
+.page { display: none; }
+.page.active { display: block; }
 
-.page.active {
-  display: block;
-}
-
-h1 {
-  font-size: 26px;
-  margin: 5px 0 8px;
-}
-
-.muted {
-  color: #96a5ba;
-  font-size: 13px;
-  line-height: 1.6;
-}
+h1 { font-size: 25px; margin: 4px 0 8px; }
+h2 { font-size: 15px; }
+.muted { color: var(--muted); font-size: 12px; line-height: 1.6; }
 
 .toolbar {
   display: flex;
-  gap: 10px;
+  gap: 9px;
   margin: 18px 0;
-  flex-wrap: wrap;
 }
 
 input {
-  background: #111a27;
-  border: 1px solid #334256;
-  color: white;
-  border-radius: 9px;
-  padding: 12px 14px;
   min-width: 0;
-}
-
-#search {
   flex: 1;
-  min-width: 190px;
+  padding: 12px;
+  border: 1px solid #334256;
+  border-radius: 8px;
+  background: #111a27;
+  color: white;
 }
 
-button.action {
+.action {
   background: var(--green);
+  color: #07140e;
   border: 0;
-  border-radius: 9px;
+  border-radius: 8px;
   padding: 12px 16px;
   font-weight: bold;
   cursor: pointer;
-  color: #07140e;
 }
 
-button.action:disabled {
-  opacity: 0.6;
-  cursor: wait;
-}
+.action:disabled { opacity: .6; }
 
 .map-layout {
   display: grid;
@@ -143,61 +108,99 @@ button.action:disabled {
   gap: 14px;
 }
 
+.map-tools {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 9px;
+}
+
+.viewbtn { padding: 8px 12px; }
+
 #map {
-  height: 65vh;
-  min-height: 390px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
+  height: 68vh;
+  min-height: 400px;
   background: #101c2b;
+  border: 1px solid var(--line);
+  border-radius: 12px;
   overflow: hidden;
 }
 
-.map-tools {
-  display: flex;
-  gap: 7px;
-  flex-wrap: wrap;
-  margin-bottom: 9px;
-  align-items: center;
-}
-
-.viewbtn {
-  padding: 8px 12px;
-  border-color: var(--line);
-}
-
 .side {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 16px;
   min-width: 0;
-  max-height: calc(65vh + 30px);
-  overflow: auto;
-}
-
-.side h2 {
-  font-size: 15px;
-  margin-top: 0;
+  max-height: calc(68vh + 35px);
+  overflow-y: auto;
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
 }
 
 .flight {
-  padding: 12px 0;
+  padding: 12px 2px;
   border-bottom: 1px solid var(--line);
   cursor: pointer;
 }
 
-.flight:hover {
+.flight:hover { color: var(--green); }
+.flight strong { display: block; margin-bottom: 5px; }
+.flight small { color: var(--muted); line-height: 1.7; }
+
+.empty {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+  padding: 10px 0;
+}
+
+#details { font-size: 12px; line-height: 1.9; overflow-wrap: anywhere; }
+#details b { color: white; }
+
+.plane-marker {
   color: var(--green);
+  font-size: 20px;
+  line-height: 24px;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  filter: drop-shadow(0 1px 3px #000);
 }
 
-.flight strong {
-  display: block;
-  font-size: 14px;
-  margin-bottom: 5px;
+.plane-marker span {
+  display: inline-block;
+  transform-origin: center;
 }
 
-.flight small {
-  color: #9eacc0;
+.photo {
+  width: 100%;
+  max-height: 200px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: #0b1018;
+  margin: 8px 0;
+}
+
+#photoCredit { font-size: 10px; color: var(--muted); }
+
+.pill {
+  display: inline-block;
+  padding: 3px 8px;
+  margin-bottom: 8px;
+  border: 1px solid #315b4c;
+  border-radius: 20px;
+  color: var(--green);
+  font-size: 10px;
+}
+
+.note { color: #8493a8; font-size: 11px; line-height: 1.7; }
+a { color: var(--green); }
+
+.homebox {
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
 }
 
 .statgrid {
@@ -208,141 +211,33 @@ button.action:disabled {
 }
 
 .stat {
-  background: var(--panel);
+  padding: 15px;
   border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 16px;
-}
-
-.stat strong {
-  font-size: 23px;
-  display: block;
-  color: var(--green);
-}
-
-.stat small {
-  color: #9eacc0;
-}
-
-.homebox {
-  padding: 25px;
-  border: 1px solid var(--line);
-  border-radius: 15px;
-  background: var(--panel);
-}
-
-#details {
-  font-size: 13px;
-  line-height: 1.9;
-  color: #c5d0df;
-  overflow-wrap: anywhere;
-}
-
-#details b {
-  color: white;
-}
-
-.note {
-  font-size: 11px;
-  color: #8493a8;
-  line-height: 1.7;
-  margin-top: 14px;
-}
-
-.plane-marker {
-  color: var(--green);
-  text-shadow: 0 0 9px var(--green);
-  font-size: 20px;
-  line-height: 24px;
-  cursor: pointer;
-  filter: drop-shadow(0 1px 2px #000);
-  user-select: none;
-  white-space: nowrap;
-}
-
-.plane-marker span {
-  display: inline-block;
-  transform-origin: center center;
-}
-
-.photo {
-  display: block;
-  width: 100%;
-  max-height: 190px;
-  object-fit: contain;
   border-radius: 10px;
-  margin: 8px 0;
-  background: #0b1018;
 }
 
-#photoCredit {
-  font-size: 10px;
-  color: #96a5ba;
-  line-height: 1.6;
-}
+.stat strong { display: block; color: var(--green); font-size: 23px; }
+.stat small { color: var(--muted); }
 
-.pill {
-  display: inline-block;
-  padding: 3px 7px;
-  border: 1px solid #315b4c;
-  border-radius: 20px;
-  color: var(--green);
-  font-size: 10px;
-  margin-bottom: 8px;
-}
+.maplibregl-ctrl-group { background: #121a26 !important; }
+.maplibregl-ctrl button { filter: invert(.9); }
 
-.empty {
-  color: #96a5ba;
-  font-size: 12px;
-  padding: 12px 0;
-}
-
-a {
-  color: var(--green);
-}
-
-.maplibregl-ctrl-group {
-  background: #121a26 !important;
-}
-
-.maplibregl-ctrl button {
-  filter: invert(.9);
-}
-
-@media (max-width: 800px) {
-  .map-layout {
-    grid-template-columns: 1fr;
-  }
-
-  #map {
-    height: 55vh;
-    min-height: 350px;
-  }
-
-  .statgrid {
-    grid-template-columns: 1fr;
-  }
-
-  header {
-    padding: 0 14px;
-  }
-
-  main {
-    padding: 12px;
-  }
-
-  .side {
-    max-height: none;
-  }
+@media (max-width: 850px) {
+  main { padding: 12px; }
+  .map-layout { grid-template-columns: 1fr; }
+  #map { height: 55vh; min-height: 340px; }
+  .side { max-height: none; }
+  .toolbar { flex-wrap: wrap; }
+  .toolbar input { flex-basis: 100%; }
+  .statgrid { grid-template-columns: 1fr; }
 }
 </style>
 </head>
 
 <body>
-
 <header>
-  <div class="brand">✈ FLYG<span>SPÅRARE</span></div>
-  <div class="status" id="topStatus">● ANSLUTER...</div>
+  <div class="brand">✈ FLYG<span>SPÅRNING</span></div>
+  <div class="status" id="topStatus">● ANSLUTER</div>
 </header>
 
 <nav>
@@ -351,142 +246,63 @@ a {
 </nav>
 
 <main>
-
 <section class="page active" id="tracking">
-
   <h1>Flygspårning</h1>
-
   <div class="muted">
-    Live-positioner från ADS-B. Flygplan visas inom det område
-    som datakällan kan leverera.
+    Live-positioner från ADS-B. Trafik visas när flygplanens positioner
+    finns tillgängliga hos datakällan.
   </div>
 
   <div class="toolbar">
-
-    <input
-      id="search"
-      type="search"
+    <input id="search" type="search"
       placeholder="Sök flygnummer, callsign eller registrering..."
-      aria-label="Sök flyg"
-      autocomplete="off"
-    >
-
-    <button class="action" id="searchBtn">
-      Sök flyg
-    </button>
-
-    <button class="action" id="refreshBtn">
-      Uppdatera
-    </button>
-
+      aria-label="Sök flyg" autocomplete="off">
+    <button class="action" id="searchBtn">Sök flyg</button>
+    <button class="action" id="refreshBtn">Uppdatera</button>
   </div>
 
   <div class="map-layout">
-
     <div>
-
       <div class="map-tools">
-
-        <button class="viewbtn active" id="flatBtn">
-          2D-karta
-        </button>
-
-        <button class="viewbtn" id="globeBtn">
-          3D-glob
-        </button>
-
-        <span class="muted">
-          Dra kartan för att utforska ett område.
-        </span>
-
+        <button class="viewbtn active" id="flatBtn">2D-karta</button>
+        <button class="viewbtn" id="globeBtn">3D-glob</button>
+        <span class="muted">Flytta och zooma kartan för att utforska trafiken.</span>
       </div>
-
       <div id="map"></div>
-
     </div>
 
     <aside class="side">
-
       <h2>Flygplan i området</h2>
+      <div id="feedStatus" class="muted">Hämtar flygdata...</div>
+      <div id="flightList" class="empty">Laddar flygplan...</div>
 
-      <div class="muted" id="feedStatus">
-        Hämtar live-data...
-      </div>
+      <h2 style="margin-top:22px">Flygplansinformation</h2>
+      <div id="details" class="muted">Välj ett flygplan på kartan eller i listan.</div>
 
-      <div id="flightList">
-        <div class="empty">
-          Laddar flygplan...
-        </div>
-      </div>
-
-      <h2 style="margin-top:22px">
-        Flygplansinformation
-      </h2>
-
-      <div id="details">
-        Välj ett flygplan på kartan eller i listan.
-      </div>
-
-      <div class="note">
-        Höjd och markhastighet visas när ADS-B-data finns.
-        Flygplansbilder visas när en matchning hittas.
-        Avgång och destination är inte alltid tillgängliga.
-      </div>
-
+      <p class="note">
+        Höjd och hastighet visas när de finns i datan.
+        Bilder och flygplansinformation kan saknas för vissa flygplan.
+      </p>
     </aside>
-
   </div>
 
-  <p class="note" id="sourceNote">
-    Flygdata: ADSB.lol. Kartdata: MapLibre.
-  </p>
-
+  <p class="note" id="sourceNote">Datakälla: ADSB.lol.</p>
 </section>
 
 <section class="page" id="home">
-
   <div class="homebox">
-
-    <h1>Välkommen till Flygspårare</h1>
-
-    <p class="muted">
-      Utforska civil flygtrafik och sök efter flygplan.
-    </p>
+    <h1>Välkommen till Flygspårning</h1>
+    <p class="muted">Utforska flygtrafik och sök efter flygplan.</p>
 
     <div class="statgrid">
-
-      <div class="stat">
-        <strong id="total">0</strong>
-        <small>Visade flygplan</small>
-      </div>
-
-      <div class="stat">
-        <strong>LIVE</strong>
-        <small>Datakälla</small>
-      </div>
-
-      <div class="stat">
-        <strong>ADS-B</strong>
-        <small>Spårningsteknik</small>
-      </div>
-
+      <div class="stat"><strong id="total">0</strong><small>Visade flygplan</small></div>
+      <div class="stat"><strong>LIVE</strong><small>Datakälla</small></div>
+      <div class="stat"><strong>ADS-B</strong><small>Spårningsteknik</small></div>
     </div>
 
-    <h2>Kom igång</h2>
-
-    <p class="muted">
-      Öppna Tracking, sök efter ett flygnummer eller välj
-      ett flygplan på kartan.
-    </p>
-
-    <button class="action" id="goTracking">
-      Öppna Tracking →
-    </button>
-
+    <button class="action" id="goTracking">Öppna Tracking →</button>
   </div>
-
 </section>
-
 </main>
 
 <script src="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.js"></script>
@@ -494,183 +310,197 @@ a {
 <script>
 "use strict";
 
-const START = {
-  lat: 59.5,
-  lon: 17.5
-};
-
-const REFRESH_INTERVAL = 30000;
+const REFRESH_MS = 30000;
+const MAX_AREAS = 9;
 
 let flights = [];
 let markers = new Map();
 let selectedId = null;
-
 let requestBusy = false;
 let lastRequestAt = 0;
-let requestTimer = null;
-let requestController = null;
+let refreshTimer = null;
+let moveTimer = null;
+let currentAbort = null;
+let mapReady = false;
 
 const map = new maplibregl.Map({
   container: "map",
-
   style: "https://demotiles.maplibre.org/style.json",
-
-  center: [START.lon, START.lat],
-
-  zoom: 5,
-
-  projection: {
-    type: "mercator"
-  }
+  center: [15, 58],
+  zoom: 4,
+  minZoom: 1,
+  maxZoom: 15,
+  renderWorldCopies: true,
+  projection: { type: "mercator" }
 });
 
-map.addControl(
-  new maplibregl.NavigationControl(),
-  "top-right"
-);
+map.addControl(new maplibregl.NavigationControl(), "top-right");
 
-map.on("error", event => {
-  console.warn("MapLibre:", event.error || event);
+map.on("load", () => {
+  mapReady = true;
+  loadFlights();
 });
 
-function planeId(plane) {
-  return String(
-    plane.hex ||
-    plane.reg ||
-    plane.flight ||
-    `${plane.lat},${plane.lon}`
-  ).trim().toLowerCase();
+map.on("error", e => console.warn("Map error:", e.error || e));
+
+function esc(value) {
+  return String(value ?? "").replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  })[c]);
 }
 
-function escapeHtml(value) {
-  return String(value ?? "").replace(/[&<>"']/g, char => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;"
-  })[char]);
+function idOf(p) {
+  return String(p.hex || p.reg || p.flight || `${p.lat},${p.lon}`)
+    .trim().toLowerCase();
 }
 
-function altitudeText(plane) {
-  if (
-    plane.altitudeFt == null ||
-    !Number.isFinite(Number(plane.altitudeFt))
-  ) {
-    return "Ej tillgänglig";
+function altitude(p) {
+  if (p.altitudeFt == null || !Number.isFinite(Number(p.altitudeFt))) {
+    return "Okänd";
   }
-
-  const feet = Math.round(Number(plane.altitudeFt));
-  const meters = Math.round(feet * 0.3048);
-
-  return `${feet.toLocaleString("sv-SE")} ft (${meters.toLocaleString("sv-SE")} m)`;
+  return Math.round(Number(p.altitudeFt)).toLocaleString("sv-SE") + " ft";
 }
 
-function speedText(plane) {
-  if (
-    plane.speedKt == null ||
-    !Number.isFinite(Number(plane.speedKt))
-  ) {
-    return "Ej tillgänglig";
+function speed(p) {
+  if (p.speedKt == null || !Number.isFinite(Number(p.speedKt))) {
+    return "Okänd";
   }
-
-  const knots = Math.round(Number(plane.speedKt));
-  const kmh = Math.round(knots * 1.852);
-
-  return `${knots} kt (${kmh.toLocaleString("sv-SE")} km/h)`;
+  return Math.round(Number(p.speedKt)) + " kt";
 }
 
 /*
- * Viktig markörfix:
- * MapLibre får kontrollera det yttre elementets position.
- * Endast den inre span-symbolen roteras.
+ * Skapa ett rutnät över det synliga kartområdet.
+ * Varje punkt söker inom en radie som beräknas från
+ * kartans synliga bredd och höjd, upp till 250 NM.
  */
-function createMarkerElement(plane) {
-  const element = document.createElement("div");
+function getSearchAreas() {
+  const bounds = map.getBounds();
+  const zoom = map.getZoom();
 
-  element.className = "plane-marker";
+  let cols = 3;
+  let rows = 3;
 
-  element.title =
-    plane.flight ||
-    plane.reg ||
-    plane.type ||
-    "Flygplan";
+  if (zoom <= 2) {
+    cols = 3;
+    rows = 2;
+  } else if (zoom >= 8) {
+    cols = 2;
+    rows = 2;
+  }
 
-  const icon = document.createElement("span");
+  const west = bounds.getWest();
+  const east = bounds.getEast();
+  const south = Math.max(-80, bounds.getSouth());
+  const north = Math.min(80, bounds.getNorth());
 
-  icon.textContent = "✈";
+  const lonSpan = Math.max(0.1, east - west);
+  const latSpan = Math.max(0.1, north - south);
 
-  icon.style.transform =
-    `rotate(${Number(plane.heading) || 0}deg)`;
+  const centerLat = (north + south) / 2;
+  const latHalfNm = latSpan * 60 / rows / 2;
+  const lonHalfNm =
+    lonSpan * 60 * Math.max(0.15, Math.cos(centerLat * Math.PI / 180))
+    / cols / 2;
 
-  element.appendChild(icon);
+  const radius = Math.min(
+    250,
+    Math.max(20, Math.ceil(Math.hypot(latHalfNm, lonHalfNm) * 1.4))
+  );
 
-  element.addEventListener("click", event => {
-    event.stopPropagation();
-    showDetails(planeId(plane));
+  const areas = [];
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      areas.push({
+        lat: south + latSpan * (r + 0.5) / rows,
+        lon: west + lonSpan * (c + 0.5) / cols,
+        dist: radius
+      });
+    }
+  }
+
+  return areas.slice(0, MAX_AREAS);
+}
+
+async function fetchArea(area, signal) {
+  const params = new URLSearchParams({
+    lat: area.lat.toFixed(4),
+    lon: area.lon.toFixed(4),
+    dist: String(area.dist)
   });
 
-  return element;
+  const response = await fetch("/api/flights?" + params, {
+    headers: { Accept: "application/json" },
+    signal
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || `API-fel ${response.status}`);
+  }
+
+  return Array.isArray(data.flights) ? data.flights : [];
+}
+
+function markerElement(plane) {
+  const el = document.createElement("div");
+  el.className = "plane-marker";
+  el.title = plane.flight || plane.reg || plane.type || "Flygplan";
+
+  const icon = document.createElement("span");
+  icon.textContent = "✈";
+  icon.style.transform = `rotate(${Number(plane.heading) || 0}deg)`;
+
+  el.appendChild(icon);
+  el.addEventListener("click", event => {
+    event.stopPropagation();
+    showDetails(idOf(plane));
+  });
+
+  return el;
 }
 
 function updateMarker(plane, marker) {
-  marker.setLngLat([
-    plane.lon,
-    plane.lat
-  ]);
+  marker.setLngLat([plane.lon, plane.lat]);
 
-  const element = marker.getElement();
+  const el = marker.getElement();
+  el.title = plane.flight || plane.reg || plane.type || "Flygplan";
 
-  element.title =
-    plane.flight ||
-    plane.reg ||
-    plane.type ||
-    "Flygplan";
-
-  const icon = element.querySelector("span");
-
+  const icon = el.querySelector("span");
   if (icon) {
-    icon.style.transform =
-      `rotate(${Number(plane.heading) || 0}deg)`;
+    icon.style.transform = `rotate(${Number(plane.heading) || 0}deg)`;
   }
 }
 
 function drawMarkers() {
-  const visibleIds = new Set();
+  const present = new Set();
 
   for (const plane of flights) {
-    if (
-      !Number.isFinite(plane.lat) ||
-      !Number.isFinite(plane.lon)
-    ) {
-      continue;
-    }
+    if (!Number.isFinite(plane.lat) || !Number.isFinite(plane.lon)) continue;
 
-    const id = planeId(plane);
-
-    visibleIds.add(id);
+    const id = idOf(plane);
+    present.add(id);
 
     let marker = markers.get(id);
 
     if (!marker) {
       marker = new maplibregl.Marker({
-        element: createMarkerElement(plane),
+        element: markerElement(plane),
         anchor: "center"
-      });
-
-      marker
-        .setLngLat([plane.lon, plane.lat])
-        .addTo(map);
+      }).setLngLat([plane.lon, plane.lat]).addTo(map);
 
       markers.set(id, marker);
-
     } else {
       updateMarker(plane, marker);
     }
   }
 
+  // Ta inte bort flygplan enbart för att en enskild
+  // områdesförfrågan tillfälligt saknade deras position.
+  // Markörer rensas först när hela hämtningen lyckats.
   for (const [id, marker] of markers) {
-    if (!visibleIds.has(id)) {
+    if (!present.has(id)) {
       marker.remove();
       markers.delete(id);
     }
@@ -678,607 +508,343 @@ function drawMarkers() {
 }
 
 function renderList() {
-  document.getElementById("total").textContent =
-    flights.length;
+  document.getElementById("total").textContent = flights.length;
 
   const list = document.getElementById("flightList");
 
   if (!flights.length) {
-    list.innerHTML = `
-      <div class="empty">
-        Inga flygplan med position hittades i området.
-        Flytta kartan eller försök igen senare.
-      </div>
-    `;
-
+    list.className = "empty";
+    list.textContent = "Inga positioner hittades i det hämtade området. Flytta kartan eller försök igen.";
     return;
   }
 
+  list.className = "";
+
   const sorted = [...flights].sort((a, b) =>
-    (a.flight || a.reg || "").localeCompare(
-      b.flight || b.reg || ""
+    (a.flight || a.reg || a.hex || "").localeCompare(
+      b.flight || b.reg || b.hex || ""
     )
   );
 
-  list.innerHTML = sorted.map(plane => {
-    const id = planeId(plane);
-
-    return `
-      <div class="flight" data-id="${escapeHtml(id)}">
-
-        <strong>
-          ✈ ${escapeHtml(
-            plane.flight ||
-            plane.reg ||
-            plane.hex ||
-            "Okänt flyg"
-          )}
-        </strong>
-
-        <small>
-          ${escapeHtml(plane.type || "Okänd flygplanstyp")}
-          · ${escapeHtml(altitudeText(plane))}
-        </small>
-
-        <br>
-
-        <small>
-          ${escapeHtml(speedText(plane))}
-          · ${escapeHtml(plane.reg || "Registrering saknas")}
-        </small>
-
-      </div>
-    `;
-  }).join("");
+  list.innerHTML = sorted.map(p => `
+    <div class="flight" data-id="${esc(idOf(p))}">
+      <strong>✈ ${esc(p.flight || p.reg || p.hex || "Okänt flyg")}</strong>
+      <small>${esc(p.type || "Okänd typ")} · ${esc(altitude(p))}</small><br>
+      <small>${esc(speed(p))} · ${esc(p.reg || "Ingen registrering")}</small>
+    </div>
+  `).join("");
 }
 
-document.getElementById("flightList")
-  .addEventListener("click", event => {
-
-    const row = event.target.closest("[data-id]");
-
-    if (row) {
-      showDetails(row.dataset.id);
-    }
-
-  });
+document.getElementById("flightList").addEventListener("click", event => {
+  const row = event.target.closest("[data-id]");
+  if (row) showDetails(row.dataset.id);
+});
 
 async function loadPhoto(plane, id) {
   const slot = document.getElementById("photoSlot");
-
   if (!slot) return;
 
   const params = new URLSearchParams({
     hex: plane.hex || "",
-    reg: plane.reg || "",
-    type: plane.icaoType || ""
+    reg: plane.reg || ""
   });
 
   try {
-    const response = await fetch(
-      "/api/photo?" + params.toString(),
-      {
-        headers: {
-          Accept: "application/json"
-        }
-      }
-    );
+    const response = await fetch("/api/photo?" + params, {
+      headers: { Accept: "application/json" }
+    });
 
-    if (!response.ok) {
-      throw new Error("Bild-API svarade med fel.");
-    }
+    if (!response.ok) throw new Error("Bild-API-fel");
 
     const data = await response.json();
-
     if (selectedId !== id) return;
 
     const photo = Array.isArray(data.photos)
-      ? data.photos.find(item => item && item.src)
+      ? data.photos.find(p => p && p.src)
       : null;
 
-    const currentSlot =
-      document.getElementById("photoSlot");
-
-    if (!currentSlot) return;
+    const current = document.getElementById("photoSlot");
+    if (!current) return;
 
     if (!photo) {
-      currentSlot.className = "empty";
-      currentSlot.textContent =
-        "Ingen bild hittades via bildtjänsten.";
-
+      current.className = "empty";
+      current.textContent = "Ingen bild hittades i bildtjänsten.";
       return;
     }
 
-    /*
-     * Använd DOM-element för bilden.
-     * Bildadressen sätts som egenskap i stället för
-     * att byggas in i HTML-strängen.
-     */
-    currentSlot.className = "";
-    currentSlot.replaceChildren();
+    current.className = "";
+    current.replaceChildren();
 
-    const image = document.createElement("img");
+    const img = document.createElement("img");
+    img.className = "photo";
+    img.alt = "Flygplansfoto";
+    img.referrerPolicy = "no-referrer";
+    img.src = photo.src;
 
-    image.className = "photo";
-    image.alt = "Foto av flygplanet";
-    image.loading = "lazy";
-    image.referrerPolicy = "no-referrer";
-
-    image.addEventListener("error", () => {
+    img.onerror = () => {
       if (selectedId === id) {
-        currentSlot.className = "empty";
-        currentSlot.textContent =
-          "Bilden kunde inte laddas från bildkällan.";
+        current.className = "empty";
+        current.textContent = "Bilden kunde inte laddas från bildkällan.";
       }
-    }, { once: true });
+    };
 
-    image.src = photo.src;
+    current.appendChild(img);
 
-    currentSlot.appendChild(image);
+    const credit = document.createElement("div");
+    credit.id = "photoCredit";
+    credit.textContent = photo.photographer
+      ? "Foto: " + photo.photographer + " "
+      : "Foto: Planespotters.net ";
 
-    if (photo.photographer || photo.link) {
-      const credit = document.createElement("div");
-
-      credit.id = "photoCredit";
-
-      if (photo.photographer) {
-        credit.textContent =
-          "Foto: " + photo.photographer + " ";
-      }
-
-      if (photo.link) {
-        try {
-          const linkUrl = new URL(photo.link);
-
-          if (linkUrl.protocol === "https:") {
-            const link = document.createElement("a");
-
-            link.href = linkUrl.href;
-            link.target = "_blank";
-            link.rel = "noopener noreferrer";
-            link.textContent = "Bildkälla";
-
-            credit.appendChild(link);
-          }
-        } catch {
-          // Ignorera ogiltiga bildlänkar.
+    if (photo.link) {
+      try {
+        const u = new URL(photo.link);
+        if (u.protocol === "https:") {
+          const a = document.createElement("a");
+          a.href = u.href;
+          a.target = "_blank";
+          a.rel = "noopener noreferrer";
+          a.textContent = "Visa bildkälla";
+          credit.appendChild(a);
         }
-      }
-
-      currentSlot.appendChild(credit);
+      } catch {}
     }
 
+    current.appendChild(credit);
   } catch (error) {
     if (selectedId !== id) return;
 
-    const currentSlot =
-      document.getElementById("photoSlot");
-
-    if (currentSlot) {
-      currentSlot.className = "empty";
-      currentSlot.textContent =
-        "Flygplansbilden kunde inte hämtas just nu.";
+    const current = document.getElementById("photoSlot");
+    if (current) {
+      current.className = "empty";
+      current.textContent = "Bilden kunde inte hämtas just nu.";
     }
 
-    console.error("Bildhämtning misslyckades:", error);
+    console.warn("Photo lookup:", error);
   }
 }
 
 async function showDetails(id) {
-  const plane = flights.find(
-    item => planeId(item) === id
-  );
-
-  if (!plane) return;
+  const p = flights.find(item => idOf(item) === id);
+  if (!p) return;
 
   selectedId = id;
 
-  const details = document.getElementById("details");
-
-  details.innerHTML = `
+  document.getElementById("details").innerHTML = `
     <div class="pill">LIVE ADS-B</div>
-
-    <div id="photoSlot" class="empty">
-      Söker efter flygplansbild...
-    </div>
-
-    <b>Flygnummer/callsign:</b>
-    ${escapeHtml(plane.flight || "Ej tillgängligt")}<br>
-
-    <b>Registrering:</b>
-    ${escapeHtml(plane.reg || "Ej tillgänglig")}<br>
-
-    <b>Flygplanstyp:</b>
-    ${escapeHtml(plane.type || "Okänd")}<br>
-
-    <b>ICAO-kod:</b>
-    ${escapeHtml(plane.hex || "Ej tillgänglig")}<br>
-
-    <b>Höjd:</b>
-    ${escapeHtml(altitudeText(plane))}<br>
-
-    <b>Markhastighet:</b>
-    ${escapeHtml(speedText(plane))}<br>
-
-    <b>Riktning:</b>
-    ${plane.heading == null
-      ? "Ej tillgänglig"
-      : Math.round(plane.heading) + "°"
-    }<br>
-
-    <b>Position:</b>
-    ${plane.lat.toFixed(4)}, ${plane.lon.toFixed(4)}<br>
-
-    <b>Senast sedd:</b>
-    ${plane.seenSeconds == null
-      ? "Ej tillgänglig"
-      : Math.round(plane.seenSeconds) + " sekunder sedan"
-    }
-
-    <div class="note">
-      Avgång och destination finns inte alltid i ADS-B-data.
-    </div>
+    <div id="photoSlot" class="empty">Söker efter bild...</div>
+    <b>Flygnummer:</b> ${esc(p.flight || "Okänt")}<br>
+    <b>Registrering:</b> ${esc(p.reg || "Okänd")}<br>
+    <b>Flygplanstyp:</b> ${esc(p.type || "Okänd")}<br>
+    <b>ICAO-hex:</b> ${esc(p.hex || "Okänd")}<br>
+    <b>Höjd:</b> ${esc(altitude(p))}<br>
+    <b>Hastighet:</b> ${esc(speed(p))}<br>
+    <b>Riktning:</b> ${p.heading == null ? "Okänd" : Math.round(p.heading) + "°"}<br>
+    <b>Position:</b> ${p.lat.toFixed(4)}, ${p.lon.toFixed(4)}<br>
+    <div class="note">Avgång och destination finns inte alltid i ADS-B-data.</div>
   `;
 
   map.flyTo({
-    center: [plane.lon, plane.lat],
+    center: [p.lon, p.lat],
     zoom: Math.max(map.getZoom(), 7),
     duration: 700
   });
 
-  await loadPhoto(plane, id);
+  await loadPhoto(p, id);
 }
 
-async function loadFlights(showLoading = true) {
-  if (requestBusy || !map.loaded()) return;
+async function loadFlights() {
+  if (!mapReady || requestBusy) return;
 
   requestBusy = true;
   lastRequestAt = Date.now();
 
-  const status =
-    document.getElementById("feedStatus");
+  const status = document.getElementById("feedStatus");
+  const top = document.getElementById("topStatus");
 
-  const topStatus =
-    document.getElementById("topStatus");
+  status.textContent = "Hämtar flygplan i det synliga området...";
+  currentAbort = new AbortController();
 
-  if (showLoading) {
-    status.textContent = "Hämtar live-data...";
-  }
-
-  /*
-   * Hämta flygplan inom ett stort område när kartan
-   * är utzoomad. Begränsa radien till 250 nautiska mil.
-   */
-  const center = map.getCenter();
-  const zoom = map.getZoom();
-
-  const distance = Math.min(
-    250,
-    Math.max(
-      50,
-      Math.round(
-        250 / Math.pow(
-          2,
-          Math.max(0, zoom - 5)
-        )
-      )
-    )
-  );
-
-  const params = new URLSearchParams({
-    lat: center.lat.toFixed(4),
-    lon: center.lng.toFixed(4),
-    dist: String(distance)
-  });
-
-  requestController = new AbortController();
-
-  const timeout = setTimeout(() => {
-    requestController?.abort();
-  }, 15000);
+  const timeout = setTimeout(() => currentAbort?.abort(), 20000);
 
   try {
-    const response = await fetch(
-      "/api/flights?" + params.toString(),
-      {
-        headers: {
-          Accept: "application/json"
-        },
-        signal: requestController.signal
-      }
+    const areas = getSearchAreas();
+
+    // Hämta flera områden parallellt, men med ett fast
+    // tak för att minska onödiga anrop.
+    const responses = await Promise.allSettled(
+      areas.map(area => fetchArea(area, currentAbort.signal))
     );
 
-    const data = await response.json();
+    const successful = responses.filter(r => r.status === "fulfilled");
+    const failed = responses.length - successful.length;
 
-    if (!response.ok) {
-      throw new Error(
-        data.error || `API-fel (${response.status})`
-      );
+    if (!successful.length) {
+      throw new Error("Ingen av områdessökningarna lyckades.");
     }
 
-    flights = (
-      Array.isArray(data.flights)
-        ? data.flights
-        : []
-    )
-      .filter(plane =>
-        Number.isFinite(Number(plane.lat)) &&
-        Number.isFinite(Number(plane.lon))
-      )
-      .map(plane => ({
-        ...plane,
-        lat: Number(plane.lat),
-        lon: Number(plane.lon)
-      }));
+    const unique = new Map();
+
+    for (const result of successful) {
+      for (const p of result.value) {
+        if (
+          p &&
+          Number.isFinite(Number(p.lat)) &&
+          Number.isFinite(Number(p.lon))
+        ) {
+          const id = idOf(p);
+          const previous = unique.get(id);
+
+          // Behåll den färskaste positionen om flera områden
+          // returnerar samma flygplan.
+          if (
+            !previous ||
+            Number(p.seenSeconds ?? Infinity) <
+            Number(previous.seenSeconds ?? Infinity)
+          ) {
+            unique.set(id, {
+              ...p,
+              lat: Number(p.lat),
+              lon: Number(p.lon)
+            });
+          }
+        }
+      }
+    }
+
+    flights = [...unique.values()];
 
     drawMarkers();
     renderList();
 
     status.textContent =
-      `${flights.length} flygplan · uppdaterad ${new Date().toLocaleTimeString("sv-SE")}`;
+      `${flights.length} flygplan · ${successful.length}/${areas.length} områden hämtade`;
 
-    topStatus.textContent = "● LIVE-DATA";
+    top.textContent = failed
+      ? "● DELVIS LIVE"
+      : "● LIVE-DATA";
 
     document.getElementById("sourceNote").textContent =
-      `Datakälla: ADSB.lol · Sökradie: ${distance} nautiska mil. Täckning varierar.`;
+      `ADSB.lol · ${areas.length} områdessökningar · Uppdaterad ${new Date().toLocaleTimeString("sv-SE")}. Datatäckning varierar.`;
 
-    if (
-      selectedId &&
-      flights.some(plane => planeId(plane) === selectedId)
-    ) {
-      const selected = flights.find(
-        plane => planeId(plane) === selectedId
-      );
-
-      /*
-       * Uppdatera detaljerna utan att återstarta
-       * bildhämtningen vid varje datauppdatering.
-       */
-      updateSelectedDetails(selected);
-
-    } else if (selectedId) {
+    if (selectedId && !flights.some(p => idOf(p) === selectedId)) {
       selectedId = null;
-
       document.getElementById("details").textContent =
         "Välj ett flygplan på kartan eller i listan.";
     }
-
   } catch (error) {
-    if (error.name !== "AbortError") {
-      console.error("Flygdata kunde inte hämtas:", error);
+    console.error("Flight loading:", error);
+    status.textContent = error.name === "AbortError"
+      ? "Anropet tog för lång tid. Försök igen."
+      : "Flygdata kunde inte hämtas. Kontrollera API-filerna.";
 
-      status.textContent =
-        "Live-data kunde inte hämtas: " + error.message;
-
-      topStatus.textContent = "● DATAFEL";
-
-      document.getElementById("sourceNote").textContent =
-        "Kontrollera att api/flights.js finns och att Vercel har publicerat den senaste versionen.";
-    } else {
-      status.textContent =
-        "Anropet tog för lång tid. Försök igen.";
-    }
-
+    top.textContent = "● DATAFEL";
   } finally {
     clearTimeout(timeout);
+    currentAbort = null;
     requestBusy = false;
-    requestController = null;
   }
-}
-
-/*
- * Uppdatera vald flygplansinformation utan att
- * skriva över bildrutan och starta om bildsökningen.
- */
-function updateSelectedDetails(plane) {
-  const details = document.getElementById("details");
-
-  const setValue = (label, value) => {
-    const nodes = details.querySelectorAll("[data-field]");
-
-    for (const node of nodes) {
-      if (node.dataset.field === label) {
-        node.textContent = value;
-      }
-    }
-  };
-
-  setValue("altitude", altitudeText(plane));
-  setValue("speed", speedText(plane));
-
-  setValue(
-    "heading",
-    plane.heading == null
-      ? "Ej tillgänglig"
-      : Math.round(plane.heading) + "°"
-  );
-
-  setValue(
-    "position",
-    `${plane.lat.toFixed(4)}, ${plane.lon.toFixed(4)}`
-  );
 }
 
 async function searchFlight() {
-  const query =
-    document.getElementById("search").value.trim();
+  const q = document.getElementById("search").value.trim();
+  if (!q) return;
 
-  if (!query) {
-    document.getElementById("details").textContent =
-      "Skriv ett flygnummer, callsign eller en registrering.";
-
-    return;
-  }
-
-  const button =
-    document.getElementById("searchBtn");
-
-  button.disabled = true;
-  button.textContent = "Söker...";
+  const btn = document.getElementById("searchBtn");
+  btn.disabled = true;
+  btn.textContent = "Söker...";
 
   try {
     const response = await fetch(
-      "/api/flights?q=" + encodeURIComponent(query),
-      {
-        headers: {
-          Accept: "application/json"
-        }
-      }
+      "/api/flights?q=" + encodeURIComponent(q),
+      { headers: { Accept: "application/json" } }
     );
 
     const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Sökningen misslyckades.");
 
-    if (!response.ok) {
-      throw new Error(
-        data.error || "Sökningen misslyckades."
-      );
-    }
-
-    const results = Array.isArray(data.flights)
-      ? data.flights
-      : [];
+    const results = Array.isArray(data.flights) ? data.flights : [];
 
     if (!results.length) {
       document.getElementById("details").textContent =
-        "Inget aktivt flyg hittades. Flygplanet måste finnas i datakällan just nu.";
-
+        "Inget flygplan med aktuell position hittades för den sökningen.";
       return;
     }
 
-    const found = {
+    const p = {
       ...results[0],
       lat: Number(results[0].lat),
       lon: Number(results[0].lon)
     };
 
-    const id = planeId(found);
+    const id = idOf(p);
+    const index = flights.findIndex(item => idOf(item) === id);
 
-    const existingIndex = flights.findIndex(
-      plane => planeId(plane) === id
-    );
-
-    if (existingIndex >= 0) {
-      flights[existingIndex] = found;
-    } else {
-      flights.unshift(found);
-    }
+    if (index >= 0) flights[index] = p;
+    else flights.unshift(p);
 
     drawMarkers();
     renderList();
-
     showDetails(id);
-
   } catch (error) {
-    console.error("Flygsökning misslyckades:", error);
-
     document.getElementById("details").textContent =
       "Sökfel: " + error.message;
-
   } finally {
-    button.disabled = false;
-    button.textContent = "Sök flyg";
+    btn.disabled = false;
+    btn.textContent = "Sök flyg";
   }
 }
 
-document.getElementById("searchBtn")
-  .addEventListener("click", searchFlight);
+document.getElementById("searchBtn").addEventListener("click", searchFlight);
+document.getElementById("search").addEventListener("keydown", e => {
+  if (e.key === "Enter") searchFlight();
+});
+document.getElementById("refreshBtn").addEventListener("click", loadFlights);
 
-document.getElementById("search")
-  .addEventListener("keydown", event => {
-    if (event.key === "Enter") {
-      searchFlight();
+document.getElementById("flatBtn").addEventListener("click", () => {
+  map.setProjection({ type: "mercator" });
+  document.getElementById("flatBtn").classList.add("active");
+  document.getElementById("globeBtn").classList.remove("active");
+});
+
+document.getElementById("globeBtn").addEventListener("click", () => {
+  map.setProjection({ type: "globe" });
+  document.getElementById("globeBtn").classList.add("active");
+  document.getElementById("flatBtn").classList.remove("active");
+});
+
+document.querySelectorAll("nav button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("nav button").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+
+    btn.classList.add("active");
+    document.getElementById(btn.dataset.page).classList.add("active");
+
+    if (btn.dataset.page === "tracking") {
+      setTimeout(() => map.resize(), 100);
     }
   });
+});
 
-document.getElementById("refreshBtn")
-  .addEventListener("click", () => {
-    loadFlights(true);
-  });
+document.getElementById("goTracking").addEventListener("click", () => {
+  document.querySelector('[data-page="tracking"]').click();
+});
 
-document.getElementById("flatBtn")
-  .addEventListener("click", () => {
-    map.setProjection({
-      type: "mercator"
-    });
-
-    document.getElementById("flatBtn")
-      .classList.add("active");
-
-    document.getElementById("globeBtn")
-      .classList.remove("active");
-  });
-
-document.getElementById("globeBtn")
-  .addEventListener("click", () => {
-    map.setProjection({
-      type: "globe"
-    });
-
-    document.getElementById("globeBtn")
-      .classList.add("active");
-
-    document.getElementById("flatBtn")
-      .classList.remove("active");
-  });
-
-document.querySelectorAll("nav button")
-  .forEach(button => {
-    button.addEventListener("click", () => {
-
-      document.querySelectorAll("nav button")
-        .forEach(item => {
-          item.classList.remove("active");
-        });
-
-      document.querySelectorAll(".page")
-        .forEach(page => {
-          page.classList.remove("active");
-        });
-
-      button.classList.add("active");
-
-      document.getElementById(
-        button.dataset.page
-      ).classList.add("active");
-
-      if (button.dataset.page === "tracking") {
-        setTimeout(() => map.resize(), 100);
-      }
-    });
-  });
-
-document.getElementById("goTracking")
-  .addEventListener("click", () => {
-    document.querySelector(
-      '[data-page="tracking"]'
-    ).click();
-  });
-
-/*
- * Debounce kartförflyttningar för att undvika
- * onödigt många API-anrop.
- */
+// Ladda om data efter att kartan har flyttats, men vänta
+// tills användaren slutat dra för att begränsa antalet anrop.
 map.on("moveend", () => {
-  clearTimeout(requestTimer);
-
-  requestTimer = setTimeout(() => {
-    if (
-      !requestBusy &&
-      Date.now() - lastRequestAt >= 1000
-    ) {
-      loadFlights(false);
+  clearTimeout(moveTimer);
+  moveTimer = setTimeout(() => {
+    if (!requestBusy && Date.now() - lastRequestAt >= 1500) {
+      loadFlights();
     }
-  }, 500);
+  }, 700);
 });
 
-map.on("load", () => {
-  loadFlights(true);
-});
-
-setInterval(() => {
-  loadFlights(false);
-}, REFRESH_INTERVAL);
+refreshTimer = setInterval(() => {
+  if (!requestBusy) loadFlights();
+}, REFRESH_MS);
 </script>
-
 </body>
 </html>
