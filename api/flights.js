@@ -1,3 +1,4 @@
+```javascript
 // api/flights.js
 // Liveflygdata från ADSB.lol för Vercel.
 
@@ -22,6 +23,12 @@ module.exports = async function handler(req, res) {
   const lon = Number(req.query.lon ?? 17.5);
   const dist = Number(req.query.dist ?? 250);
 
+  if (req.query.q && !q) {
+    return res.status(400).json({
+      error: "Ange ett giltigt flygnummer eller en registrering."
+    });
+  }
+
   if (!q && (
     !Number.isFinite(lat) ||
     !Number.isFinite(lon) ||
@@ -35,12 +42,6 @@ module.exports = async function handler(req, res) {
     });
   }
 
-  if (req.query.q && !q) {
-    return res.status(400).json({
-      error: "Ange ett giltigt flygnummer eller en registrering."
-    });
-  }
-
   const radius = Math.min(250, Math.max(1, dist));
 
   let urls;
@@ -49,15 +50,15 @@ module.exports = async function handler(req, res) {
     const looksLikeRegistration =
       q.includes("-") || /^[A-Z]{1,3}[0-9]{1,5}$/.test(q);
 
-    const registration =
+    const byRegistration =
       `${API}/reg/${encodeURIComponent(q)}`;
 
-    const callsign =
+    const byCallsign =
       `${API}/callsign/${encodeURIComponent(q)}`;
 
     urls = looksLikeRegistration
-      ? [registration, callsign]
-      : [callsign, registration];
+      ? [byRegistration, byCallsign]
+      : [byCallsign, byRegistration];
   } else {
     urls = [
       `${API}/lat/${lat}/lon/${lon}/dist/${radius}`
@@ -88,7 +89,7 @@ module.exports = async function handler(req, res) {
 
         const data = await response.json();
 
-        if (Array.isArray(data.ac) && data.ac.length) {
+        if (Array.isArray(data.ac) && data.ac.length > 0) {
           aircraft = data.ac;
           break;
         }
@@ -116,6 +117,10 @@ module.exports = async function handler(req, res) {
         typeof p.lon === "number" &&
         Number.isFinite(p.lat) &&
         Number.isFinite(p.lon) &&
+        p.lat >= -90 &&
+        p.lat <= 90 &&
+        p.lon >= -180 &&
+        p.lon <= 180 &&
         p.mil !== true &&
         p.military !== true
       )
@@ -130,46 +135,4 @@ module.exports = async function handler(req, res) {
           hex: String(p.hex || "").toLowerCase(),
           flight: String(p.flight || "").trim(),
           reg: String(p.r || p.registration || "").trim(),
-          type: String(p.t || p.desc || "").trim(),
-          icaoType: String(p.t || "").trim(),
-
-          lat: p.lat,
-          lon: p.lon,
-
-          altitudeFt: baro !== null ? baro : geom,
-
-          speedKt: typeof p.gs === "number" ? p.gs : null,
-
-          heading:
-            typeof p.track === "number"
-              ? p.track
-              : typeof p.true_heading === "number"
-                ? p.true_heading
-                : null,
-
-          seenSeconds:
-            typeof p.seen_pos === "number"
-              ? p.seen_pos
-              : typeof p.seen === "number"
-                ? p.seen
-                : null,
-
-          onGround: p.alt_baro === "ground"
-        };
-      });
-
-    return res.status(200).json({
-      source: "ADSB.lol",
-      updatedAt: new Date().toISOString(),
-      count: flights.length,
-      flights
-    });
-
-  } catch (error) {
-    console.error("Flights API error:", error);
-
-    return res.status(502).json({
-      error: "Ett oväntat fel inträffade när flygdata hämtades."
-    });
-  }
-};
+          type: String
