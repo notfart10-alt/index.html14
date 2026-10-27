@@ -1,126 +1,99 @@
 // api/photo.js
-// Hämtar flygplansbilder från Planespotters.net.
-// En bild visas bara om en matchning hittas.
+// Flygplansbilder från Planespotters.net.
+// Försöker registrering först och hexkod därefter.
 
 module.exports = async function handler(req, res) {
-  res.setHeader(
-    "Content-Type",
-    "application/json; charset=utf-8"
-  );
-
-  res.setHeader(
-    "Cache-Control",
-    "s-maxage=3600, stale-while-revalidate=7200"
-  );
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.setHeader("Cache-Control", "s-maxage=3600, stale-while-revalidate=7200");
 
   if (req.method !== "GET") {
     res.setHeader("Allow", "GET");
-
-    return res.status(405).json({
-      error: "Endast GET-anrop stöds."
-    });
+    return res.status(405).json({ error: "Endast GET stöds." });
   }
 
-  const hex = String(req.query.hex || "")
-    .toLowerCase()
-    .replace(/[^a-f0-9]/g, "")
-    .slice(0, 6);
-
   const reg = String(req.query.reg || "")
+    .trim()
     .toUpperCase()
     .replace(/[^A-Z0-9-]/g, "")
     .slice(0, 12);
 
-  if (!hex && !reg) {
-    return res.status(200).json({
-      photos: []
-    });
+  const hex = String(req.query.hex || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-f0-9]/g, "")
+    .slice(0, 6);
+
+  if (!reg && !hex) {
+    return res.status(200).json({ photos: [] });
   }
 
   const endpoints = [];
 
-  if (hex) {
-    endpoints.push(
-      "https://api.planespotters.net/pub/photos/hex/" +
-      encodeURIComponent(hex)
-    );
-  }
-
   if (reg) {
     endpoints.push(
-      "https://api.planespotters.net/pub/photos/reg/" +
-      encodeURIComponent(reg)
+      `https://api.planespotters.net/pub/photos/reg/${encodeURIComponent(reg)}`
     );
   }
 
-  try {
-    for (const endpoint of endpoints) {
-      let response;
+  if (hex) {
+    endpoints.push(
+      `https://api.planespotters.net/pub/photos/hex/${encodeURIComponent(hex)}`
+    );
+  }
 
-      try {
-        response = await fetch(endpoint, {
-          headers: {
-            Accept: "application/json"
-          },
-          signal: AbortSignal.timeout(8000)
-        });
-      } catch (error) {
-        console.error("Bildtjänsten kunde inte nås:", error);
-        continue;
-      }
+  for (const endpoint of endpoints) {
+    try {
+      const response = await fetch(endpoint, {
+        headers: { Accept: "application/json" },
+        signal: AbortSignal.timeout(8000)
+      });
 
       if (!response.ok) {
+        console.warn("Photo API returned:", response.status);
         continue;
       }
 
-      let data;
+      const data = await response.json();
 
-      try {
-        data = await response.json();
-      } catch {
-        continue;
-      }
+      const records = Array.isArray(data.photos)
+        ? data.photos
+        : [];
 
-      const photos = (
-        Array.isArray(data.photos)
-          ? data.photos
-          : []
-      )
-        .slice(0, 5)
-        .map(photo => ({
-          src:
+      const photos = records
+        .map(photo => {
+          const src =
             photo.thumbnail_large?.src ||
             photo.thumbnail?.src ||
-            "",
+            photo.image?.src ||
+            "";
 
-          link:
-            photo.link ||
-            "https://www.planespotters.net/",
+          const link = photo.link || "";
 
-          photographer:
-            photo.photographer || "",
+          return {
+            src,
+            link,
+            photographer: photo.photographer || "",
+            date: photo.date || ""
+          };
+        })
+        .filter(photo => {
+          // Acceptera bara fullständiga HTTPS-bildadresser.
+          try {
+            return new URL(photo.src).protocol === "https:";
+          } catch {
+            return false;
+          }
+        })
+        .slice(0, 5);
 
-          date:
-            photo.date || ""
-        }))
-        .filter(photo => photo.src);
-
-      if (photos.length > 0) {
-        return res.status(200).json({
-          photos: photos
-        });
+      if (photos.length) {
+        return res.status(200).json({ photos });
       }
+
+    } catch (error) {
+      console.error("Photo lookup failed:", error);
     }
-
-    return res.status(200).json({
-      photos: []
-    });
-
-  } catch (error) {
-    console.error("Photo API error:", error);
-
-    return res.status(200).json({
-      photos: []
-    });
   }
+
+  return res.status(200).json({ photos: [] });
 };
