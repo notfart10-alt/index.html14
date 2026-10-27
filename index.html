@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="sv">
 <head>
@@ -26,17 +25,20 @@
       box-sizing: border-box;
     }
 
-    html,
-    body {
-      margin: 0;
+    html {
+      width: 100%;
       min-height: 100%;
-      background: var(--bg);
-      color: var(--text);
-      font-family: Arial, Helvetica, sans-serif;
+      margin: 0;
     }
 
     body {
+      width: 100%;
+      min-height: 100vh;
+      margin: 0;
       padding: 16px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
     }
 
     header {
@@ -118,21 +120,28 @@
       grid-template-columns: minmax(0, 1fr) 300px;
       gap: 10px;
       align-items: stretch;
+      width: 100%;
+      min-width: 0;
     }
 
     .map-wrap {
       position: relative;
+      width: 100%;
       min-width: 0;
+      height: min(75vh, 800px);
+      min-height: 420px;
     }
 
     #map {
+      position: relative;
       width: 100%;
-      height: min(78vh, 800px);
+      height: 100%;
       min-height: 420px;
       background: #111b29;
       border: 1px solid var(--border);
       border-radius: 10px;
       overflow: hidden;
+      z-index: 1;
     }
 
     #mapMessage {
@@ -150,6 +159,7 @@
       font-size: 13px;
       line-height: 1.5;
       display: none;
+      overflow-wrap: anywhere;
       pointer-events: none;
     }
 
@@ -163,7 +173,7 @@
 
     .sidebar {
       min-width: 0;
-      height: min(78vh, 800px);
+      height: min(75vh, 800px);
       min-height: 420px;
       overflow-y: auto;
       background: var(--panel);
@@ -221,7 +231,6 @@
       margin-top: 12px;
     }
 
-    /* Flygplansmarkörer */
     .plane-marker {
       display: flex;
       align-items: center;
@@ -242,14 +251,10 @@
       filter: drop-shadow(0 0 7px #ffe66d);
     }
 
-    .plane-marker.emergency {
-      color: var(--red) !important;
-      filter: drop-shadow(0 0 8px var(--red));
-    }
-
+    .plane-marker.emergency,
     .plane-marker.emergency.selected {
       color: var(--red) !important;
-      filter: drop-shadow(0 0 11px var(--red));
+      filter: drop-shadow(0 0 9px var(--red));
     }
 
     .leaflet-container {
@@ -273,11 +278,15 @@
       }
 
       .layout {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .map-wrap {
+        height: 60vh;
+        min-height: 350px;
       }
 
       #map {
-        height: 60vh;
         min-height: 350px;
       }
 
@@ -322,7 +331,8 @@
       3D-vy
     </button>
     <span class="hint">
-      Röda markörer betyder squawk 7500 eller 7700. Flygplatsmarkörer visas inte.
+      Röda markörer betyder squawk 7500 eller 7700.
+      Flygplatsmarkörer visas inte.
     </span>
   </div>
 
@@ -377,7 +387,6 @@
     let mapReady = false;
     let loading = false;
     let selectedId = null;
-    let requestController = null;
     let refreshTimer = null;
     let refreshInterval = null;
     let lastPhotoRequest = 0;
@@ -407,6 +416,46 @@
         '"': "&quot;",
         "'": "&#39;"
       })[char]);
+    }
+
+    /*
+     * Om API:t returnerar ett objekt i stället för text
+     * visas ett begripligt fel i stället för [object Object].
+     */
+    function readableError(error) {
+      if (error === null || error === undefined) {
+        return "Okänt fel";
+      }
+
+      if (typeof error === "string") {
+        return error;
+      }
+
+      if (error instanceof Error && error.message) {
+        return error.message;
+      }
+
+      if (typeof error === "object") {
+        if (typeof error.message === "string") {
+          return error.message;
+        }
+
+        if (typeof error.error === "string") {
+          return error.error;
+        }
+
+        if (typeof error.details === "string") {
+          return error.details;
+        }
+
+        try {
+          return JSON.stringify(error);
+        } catch {
+          return "Ett okänt objekt returnerades av servern.";
+        }
+      }
+
+      return String(error);
     }
 
     function valueFrom(object, keys) {
@@ -511,22 +560,30 @@
         : "Okänd";
     }
 
-    async function fetchJSON(url, signal, timeoutMs = 15000) {
+    /*
+     * Hanterar både vanliga felmeddelanden och felobjekt
+     * från API:t. Timeout och avbrutna anrop hanteras separat.
+     */
+    async function fetchJSON(url, parentSignal = null, timeoutMs = 15000) {
       const controller = new AbortController();
+      let timedOut = false;
 
       const abortFromParent = () => controller.abort();
 
-      if (signal) {
-        if (signal.aborted) {
+      if (parentSignal) {
+        if (parentSignal.aborted) {
           controller.abort();
         } else {
-          signal.addEventListener("abort", abortFromParent, {
+          parentSignal.addEventListener("abort", abortFromParent, {
             once: true
           });
         }
       }
 
-      const timeout = setTimeout(() => controller.abort(), timeoutMs);
+      const timeout = setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+      }, timeoutMs);
 
       try {
         const response = await fetch(url, {
@@ -536,32 +593,57 @@
           signal: controller.signal
         });
 
-        let data;
+        const responseText = await response.text();
+        let data = null;
 
-        try {
-          data = await response.json();
-        } catch {
-          throw new Error(
-            `Servern returnerade inte giltig JSON (HTTP ${response.status}).`
-          );
+        if (responseText) {
+          try {
+            data = JSON.parse(responseText);
+          } catch {
+            throw new Error(
+              `Servern returnerade ogiltig JSON (HTTP ${response.status}).`
+            );
+          }
         }
 
         if (!response.ok) {
-          throw new Error(data?.error || `HTTP ${response.status}`);
+          const details =
+            data?.error ??
+            data?.message ??
+            data?.details ??
+            `HTTP ${response.status}`;
+
+          throw new Error(readableError(details));
+        }
+
+        if (data === null) {
+          throw new Error("Servern returnerade ett tomt svar.");
+        }
+
+        if (data.error) {
+          throw new Error(readableError(data.error));
         }
 
         return data;
       } catch (error) {
-        if (error.name === "AbortError") {
-          throw new Error("Förfrågan tog för lång tid.");
+        if (timedOut) {
+          throw new Error("API-anropet tog för lång tid. Försök igen.");
         }
 
-        throw error;
+        if (parentSignal?.aborted) {
+          throw new Error("Förfrågan avbröts.");
+        }
+
+        if (error instanceof Error) {
+          throw error;
+        }
+
+        throw new Error(readableError(error));
       } finally {
         clearTimeout(timeout);
 
-        if (signal) {
-          signal.removeEventListener("abort", abortFromParent);
+        if (parentSignal) {
+          parentSignal.removeEventListener("abort", abortFromParent);
         }
       }
     }
@@ -583,21 +665,40 @@
       };
     }
 
-    function createPlaneMarker(plane, id) {
-      const element = document.createElement("div");
-      element.className = "plane-marker";
-      element.innerHTML = "<span>✈</span>";
-      element.setAttribute("role", "button");
-      element.setAttribute("tabindex", "0");
-      element.setAttribute("aria-label", flightName(plane));
+    function makePlaneIcon(plane, selected = false) {
+      const emergencyClass = isEmergencySquawk(plane)
+        ? " emergency"
+        : "";
 
+      const selectedClass = selected
+        ? " selected"
+        : "";
+
+      const label = isEmergencySquawk(plane)
+        ? `${flightName(plane)} — Squawk ${squawkCode(plane)}`
+        : flightName(plane);
+
+      const iconHTML = `
+        <div
+          class="plane-marker${emergencyClass}${selectedClass}"
+          title="${escapeHTML(label)}"
+          aria-label="${escapeHTML(label)}"
+        >
+          <span style="display:inline-block;transform:rotate(${Number(plane.heading) || 0}deg)">✈</span>
+        </div>
+      `;
+
+      return L.divIcon({
+        className: "",
+        html: iconHTML,
+        iconSize: [32, 32],
+        iconAnchor: [16, 16]
+      });
+    }
+
+    function createPlaneMarker(plane, id) {
       const marker = L.marker([plane.lat, plane.lon], {
-        icon: L.divIcon({
-          className: "",
-          html: element.outerHTML,
-          iconSize: [32, 32],
-          iconAnchor: [16, 16]
-        }),
+        icon: makePlaneIcon(plane, id === selectedId),
         keyboard: true,
         title: flightName(plane),
         zIndexOffset: isEmergencySquawk(plane) ? 1000 : 0
@@ -606,7 +707,6 @@
       marker.on("click", () => selectPlane(id));
 
       markers.set(id, marker);
-      updatePlaneMarker(plane);
 
       return marker;
     }
@@ -621,31 +721,13 @@
       let marker = markers.get(id);
 
       if (!marker) {
-        createPlaneMarker(plane, id);
-        return;
+        marker = createPlaneMarker(plane, id);
+      } else {
+        marker.setLatLng([plane.lat, plane.lon]);
+        marker.setIcon(makePlaneIcon(plane, id === selectedId));
+        marker.setZIndexOffset(isEmergencySquawk(plane) ? 1000 : 0);
+        marker.options.title = flightName(plane);
       }
-
-      marker.setLatLng([plane.lat, plane.lon]);
-      marker.setZIndexOffset(isEmergencySquawk(plane) ? 1000 : 0);
-      marker.options.title = flightName(plane);
-
-      const element = marker.getElement();
-
-      if (!element) return;
-
-      element.classList.toggle("selected", id === selectedId);
-      element.classList.toggle("emergency", isEmergencySquawk(plane));
-
-      const icon = element.querySelector("span");
-
-      if (icon) {
-        icon.style.display = "inline-block";
-        icon.style.transform = `rotate(${Number(plane.heading) || 0}deg)`;
-      }
-
-      element.title = isEmergencySquawk(plane)
-        ? `${flightName(plane)} — Squawk ${squawkCode(plane)}`
-        : flightName(plane);
     }
 
     function drawPlaneMarkers() {
@@ -663,6 +745,10 @@
       }
     }
 
+    /*
+     * Hämtar flygdata från ett begränsat antal punkter
+     * i det område som visas på kartan.
+     */
     function visibleAreas() {
       const center = map.getCenter();
       const bounds = map.getBounds();
@@ -712,7 +798,7 @@
 
       if (!Array.isArray(data.flights)) {
         throw new Error(
-          "API:t saknar listan 'flights'. Kontrollera api/flights.js."
+          "API:t returnerade ingen giltig 'flights'-lista. Kontrollera api/flights.js."
         );
       }
 
@@ -726,7 +812,6 @@
       refreshButton.disabled = true;
 
       const controller = new AbortController();
-      requestController = controller;
 
       setStatus("Hämtar flygdata...");
       hideMapMessage();
@@ -749,7 +834,7 @@
         if (successful.length === 0) {
           const reason = failed[0]?.reason;
           const message =
-            `Kunde inte hämta flygdata: ${reason?.message || "Okänt fel"}`;
+            `Kunde inte hämta flygdata: ${readableError(reason)}`;
 
           setStatus(message);
           showMapMessage(message, true);
@@ -774,8 +859,8 @@
           }
 
           /*
-           * Ta bort gamla markörer bara när samtliga områden lyckades
-           * och minst ett flygplan faktiskt returnerades.
+           * Rensa gamla flygplan endast när alla områden
+           * har svarat och minst ett flygplan hittades.
            */
           if (successful.length === areas.length) {
             for (const id of [...flights.keys()]) {
@@ -796,12 +881,19 @@
           setStatus(`${flights.size} flygplan visas${suffix}.`);
           hideMapMessage();
         } else {
+          const failureText = failed.length
+            ? ` ${failed.length} områden misslyckades.`
+            : "";
+
           const message = flights.size
-            ? "Inga nya flygplan returnerades. Visar senast mottagna positioner."
-            : "API:t svarade men hittade inga flygplan i området. Prova att zooma ut eller flytta kartan.";
+            ? "Inga nya flygplan returnerades. Visar senast mottagna positioner." +
+              failureText
+            : "API:t svarade, men returnerade inga flygplan i området." +
+              " Prova att flytta kartan eller zooma ut." +
+              failureText;
 
           setStatus(message);
-          showMapMessage(message, true);
+          showMapMessage(message, failed.length > 0 || flights.size === 0);
         }
 
         if (selectedId && flights.has(selectedId)) {
@@ -809,14 +901,13 @@
         }
       } catch (error) {
         const message =
-          `Kunde inte hämta flygdata: ${error?.message || "Okänt fel"}`;
+          `Kunde inte hämta flygdata: ${readableError(error)}`;
 
         setStatus(message);
         showMapMessage(message, true);
       } finally {
         loading = false;
         refreshButton.disabled = false;
-        requestController = null;
       }
     }
 
@@ -850,6 +941,8 @@
         emergency
           ? `<p class="emergency-text">
               Varning: flygplanet sänder squawk ${escapeHTML(squawk)}.
+              Detta är en transponderkod och bör inte ensam tolkas som
+              bekräftelse på en nödsituation.
             </p>`
           : ""
       );
@@ -928,6 +1021,8 @@
             const imageURL = photo.src || "";
             const linkURL = photo.link || imageURL;
 
+            if (!imageURL) return "";
+
             return `
               <a class="photo-link"
                  href="${escapeHTML(linkURL)}"
@@ -950,6 +1045,10 @@
               </p>
             `;
           }).join("");
+
+          if (!photosElement.innerHTML.trim()) {
+            showPhotoSearchLinks(plane);
+          }
 
           return;
         }
@@ -1017,12 +1116,19 @@
       try {
         const data = await fetchJSON(`/api/flights?${params}`);
 
-        const found = (Array.isArray(data.flights) ? data.flights : [])
+        if (!Array.isArray(data.flights)) {
+          throw new Error(
+            "API:t returnerade ingen giltig 'flights'-lista."
+          );
+        }
+
+        const found = data.flights
           .map(normalizeFlight)
           .filter(Boolean);
 
         if (!found.length) {
-          const message = `Inga aktuella positioner hittades för ${query}.`;
+          const message =
+            `Inga aktuella positioner hittades för ${query}.`;
 
           setStatus(message);
           showMapMessage(message, true);
@@ -1038,6 +1144,7 @@
         const plane = found[0];
         selectedId = planeId(plane);
 
+        drawPlaneMarkers();
         renderPlaneInfo(plane);
 
         map.flyTo(
@@ -1050,7 +1157,7 @@
         hideMapMessage();
       } catch (error) {
         const message =
-          `Sökningen misslyckades: ${error?.message || "Okänt fel"}`;
+          `Sökningen misslyckades: ${readableError(error)}`;
 
         setStatus(message);
         showMapMessage(message, true);
@@ -1062,7 +1169,7 @@
     function initializeMap() {
       if (!window.L) {
         const message =
-          "Kartbiblioteket kunde inte laddas. Kontrollera internetanslutningen eller unpkg.com.";
+          "Kartbiblioteket kunde inte laddas. Kontrollera internetanslutningen.";
 
         setStatus(message);
         showMapMessage(message, true);
@@ -1079,19 +1186,25 @@
           preferCanvas: true
         });
 
-        /*
-         * OpenStreetMap används som kartbakgrund i stället för
-         * MapLibre/OpenFreeMap.
-         */
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-          maxZoom: 19,
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>',
-          crossOrigin: true
-        }).addTo(map);
+        L.tileLayer(
+          "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+          {
+            maxZoom: 19,
+            attribution:
+              '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>'
+          }
+        ).addTo(map);
 
         map.whenReady(() => {
           mapReady = true;
-          map.invalidateSize();
+
+          /*
+           * Leaflet behöver ibland räkna om kartans storlek
+           * när webbläsaren eller layouten ändras.
+           */
+          setTimeout(() => {
+            map.invalidateSize(true);
+          }, 100);
 
           setStatus("Kartan är redo. Hämtar flygdata...");
           hideMapMessage();
@@ -1100,12 +1213,9 @@
         });
 
         map.on("tileerror", () => {
-          if (!mapReady) {
-            showMapMessage(
-              "Kartbakgrunden kunde inte hämtas. Kontrollera internetanslutningen.",
-              true
-            );
-          }
+          setStatus(
+            "Vissa kartbilder kunde inte laddas. Kontrollera internetanslutningen."
+          );
         });
 
         map.on("moveend", () => {
@@ -1118,10 +1228,22 @@
           }, 1200);
         });
 
+        /*
+         * Anpassa kartan om fönstret ändrar storlek,
+         * exempelvis när webbläsarfönstret maximeras.
+         */
+        window.addEventListener("resize", () => {
+          if (!map) return;
+
+          setTimeout(() => {
+            map.invalidateSize(true);
+          }, 100);
+        });
+
         setTimeout(() => {
           if (!mapReady) {
             const message =
-              "Kartan startade inte. Kontrollera att Leaflet kunde laddas från unpkg.com.";
+              "Kartan startade inte. Kontrollera att Leaflet kunde laddas.";
 
             setStatus(message);
             showMapMessage(message, true);
@@ -1129,7 +1251,7 @@
         }, 12000);
       } catch (error) {
         const message =
-          `Kunde inte starta kartan: ${error.message || "Okänt fel"}`;
+          `Kunde inte starta kartan: ${readableError(error)}`;
 
         setStatus(message);
         showMapMessage(message, true);
@@ -1159,7 +1281,7 @@
       $("twoDButton").classList.add("active");
       $("threeDButton").classList.remove("active");
 
-      setStatus("2D-karta vald. Den här kartmotorn använder 2D.");
+      setStatus("2D-karta vald.");
     });
 
     $("threeDButton").addEventListener("click", () => {
@@ -1178,7 +1300,11 @@
         loadFlights();
       }
     }, 45000);
+
+    window.addEventListener("beforeunload", () => {
+      clearTimeout(refreshTimer);
+      clearInterval(refreshInterval);
+    });
   </script>
 </body>
 </html>
-```
